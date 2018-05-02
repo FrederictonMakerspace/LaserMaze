@@ -23,9 +23,6 @@ You'll need:
 
 ### Schematic
 
-TBD
-
-## License
 
 TBD
 

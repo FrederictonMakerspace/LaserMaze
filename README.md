@@ -8,13 +8,22 @@ Also great for a Halloween setup!
 ## Getting Started
 
 You'll need:
-An Arudino
-Lasers (5mw)
-A PC with processing (https://processing.org/)
+* An Arudino
+* Lasers (5mw)
+* A PC with processing
+* Breadboard
+* Jumper wires
+* 220ohm resistors
 
 ### Installing
 
-To be Done...
+1) Install Processing  (https://processing.org/)
+1) Install Arduino IDE (https://www.arduino.cc/en/Main/Software)
+1) Lots more...
+
+### Schematic
+
+TBD
 
 ## License
 

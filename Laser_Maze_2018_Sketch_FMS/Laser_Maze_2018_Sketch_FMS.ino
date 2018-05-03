@@ -16,14 +16,14 @@ void setup()
 {
   pinMode(ledPin, OUTPUT);  // Set ledPin - 13 pin as an output
   pinMode(laserPin, OUTPUT);  // Set laserPin - 8 pin as an output
-  
+
   //Initialize input pics
   for (int i=0; i<resistorCount; i++)
   {
     int pin = resistorPins[i];
     pinMode(pin, INPUT);// Resistor input 
   }
-  
+
   digitalWrite(ledPin, LOW); //Turn led off
   digitalWrite(laserPin, LOW); //Turn led off
 
@@ -62,7 +62,7 @@ void loop()
   }
     
   //Wrap for compatibility with the laser processing sketch (comma separated values)
-  String serialMessage = (String)resistorValues[0] + ",0,0,0";
+  String serialMessage = (String)resistorValues[0] + "," + (String)resistorValues[1] + "," + (String)resistorValues[2] + ","  + (String)resistorValues[3];
 
   //Send to PC
   Serial.println(serialMessage);

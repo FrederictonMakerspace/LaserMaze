@@ -6,15 +6,16 @@
 const int ledPin=13;       // Led pin at Arduino pin 13
 const int laserPin=8;       // Laser (5mw) connected to pin at Arduino pin 8
 
-const int resistorPins[] = {3, 4, 5, 6}; //Photoresistor at Arduino analog pin A0
+const int resistorPins[] = {A0, A1, A2, A3}; //Photoresistor at Arduino analog pin A0
 int resistorCount = 4;
 
 //Variables
 int resistorValues[] = {0, 0, 0, 0};  // Store value from photoresistor (0-100ish? Depends on the resitor used. Use 220)
 
-void setup(){
-  pinMode(ledPin, OUTPUT);  // Set lepPin - 13 pin as an output
-  pinMode(laserPin, OUTPUT);  // Set lepPin - 8 pin as an output
+void setup()
+{
+  pinMode(ledPin, OUTPUT);  // Set ledPin - 13 pin as an output
+  pinMode(laserPin, OUTPUT);  // Set laserPin - 8 pin as an output
   
   //Initialize input pics
   for (int i=0; i<resistorCount; i++)
@@ -29,13 +30,14 @@ void setup(){
   Serial.begin(9600);
 }
 
-void loop(){
+void loop()
+{
   //Read all resistors and store the valuye
-  if (int i=0; i<resistorCount; i++;)
+  for (int i=0; i<resistorCount; i++)
   {
     int resistorToRead = resistorPins[i];
     
-    //Store
+    //Store the value in the array
     resistorValues[i] = analogRead(resistorToRead);
   }
 
@@ -60,15 +62,10 @@ void loop(){
   }
     
   //Wrap for compatibility with the laser processing sketch (comma separated values)
-  String serialMessage = (String)resistorValues.join(",";
+  String serialMessage = (String)resistorValues[0] + ",0,0,0";
 
   //Send to PC
-  try
-    Serial.println(serialMessage);
-  catch (Exception e)
-  {
-    //Throw away error
-  }
+  Serial.println(serialMessage);
 
   delay(50); //Small delay
 }

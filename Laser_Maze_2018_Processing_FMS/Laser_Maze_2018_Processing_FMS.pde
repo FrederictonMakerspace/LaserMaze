@@ -100,8 +100,6 @@ void draw () {
     stopButton = new Button(850, 410, "Stop", #43f381);
     stopButton.draw();
     
-    //TODO - could be put into an array, I suppose! 
-    
     //Create a bar graph, set the data and draw it (x4)
     SensorBar bar0 = new SensorBar(30,10); //instantiate a bar (visual representation) with an X and Y for where I want this bar to draw
     bar0.setSensorValues(sensorData.getSensor0Value(), sensorData.getLowThreathold0());
@@ -146,7 +144,7 @@ void draw () {
       alarmsTriggered+=1;
       
       soundAlarm();
-      delay(2); //10 seconds
+      delay(1000); //1 seconds
       ellapsedTime = 0;
       startTime = millis();
     }
@@ -298,8 +296,9 @@ class SensorBar extends GuiComponent {
     rect(this.getX(), this.getY(), this.getWidth(), this.getHeight());
 
     //Fill based on input
-    fill(this.getFillColor(this.sensorValue, this.lowerBound));  // grey
+    fill(this.getFillColor(this.sensorValue, this.lowerBound));
     int scaledHeight = floor(map(this.sensorValue, 0, 100, 0, this.getHeight()));  // map the input value to fit within the graph
+    if (scaledHeight > this.getHeight()) scaledHeight = this.getHeight(); // stop over draw when values are too high from the input
     rect(this.getX(), this.getY() + (this.getHeight() - scaledHeight), this.getWidth(), scaledHeight); 
 
     //Draw threshold indicator
@@ -338,16 +337,16 @@ class MazeData {
       this.sensor2Value = 0;
       this.sensor3Value = 0;
 
-      this.lowThreshold0 = 23;
-      this.lowThreshold1 = 23;
-      this.lowThreshold2 = 23;
-      this.lowThreshold3 = 23;
+      this.lowThreshold0 = 10;
+      this.lowThreshold1 = 0;
+      this.lowThreshold2 = 0;
+      this.lowThreshold3 = 0;
     }
     
     MazeData(String inputValues) throws Exception
     {
       this(); // Call default contructor to set defatult values
-      
+      //intln("raw:'" + inputValues + "'");
       if (inputValues == null)
       {
         throw new Exception("Null is a valid constructor to MazeData");
@@ -359,11 +358,22 @@ class MazeData {
         {
           throw new Exception("MazeData needs 4 values to initialize");
         }
-        
-        this.sensor0Value = int(values[0]);
-        this.sensor1Value = int(values[1]);
-        this.sensor2Value = int(values[2]);
-        this.sensor3Value = int(values[3]);
+      
+        this.sensor0Value = int(trim(values[0]));
+        this.sensor1Value = int(trim(values[1]));
+        this.sensor2Value = int(trim(values[2]));
+        this.sensor3Value = int(trim(values[3]));
+/*      
+        println("v0 " + values[0]);
+        println("v1 " + values[1]);
+        println("v2 " + values[2]);
+        println("v3 " + values[3]);
+
+        println("check0: " + this.sensor0Value);
+        println("check1: " + this.sensor1Value);
+        println("check2: " + this.sensor2Value);
+        println("check3: " + this.sensor3Value);
+*/
       }
     }
     
@@ -514,6 +524,7 @@ void serialEvent (Serial myPort) {
   //Assume the data is in a comma string "12,45,76,80"
 
   lastSerialData = myPort.readStringUntil('\n');    // get the ASCII string
+  lastSerialData = lastSerialData.replace("\n","");
 }
 
 void stop() {

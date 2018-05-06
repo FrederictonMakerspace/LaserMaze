@@ -25,23 +25,27 @@ import processing.serial.*; // serial communication library
 import processing.sound.*;
  
 boolean demoMode = true; //True to generate dummy data instead of reading from serial
-int alarmsTriggered = 0;
-boolean gamePaused = true;
 
+MazeData mazeData = new MazeData(); // This object holds the state of the game 
 
+//Sounds Effects
 SoundFile alarmSound;
+SoundFile powerUpSound;
+SoundFile countDownSound;
+
+
 Serial myPort; // The serial port
 boolean alarm = false;  // is the alarm servo on or off
 
 String lastSerialData = "";  // What's been read off of serial OR randomly generated if demoMode = true
 
-int startTime = 0; //Time the current run started
-int ellapsedTime = 0; //Elapsed time of the current run (between start and stop)
 PFont gameFont20;
 PFont gameFont50;
 
 Button startButton; 
-Button stopButton; 
+Button resetButton; 
+
+PImage logo;
 
 void setup () {
   // set the window size:
@@ -49,31 +53,17 @@ void setup () {
   
   frameRate(10);  // Run 10 frames per second
   
-  //**********
-  // set inital background layout:
-  //Bue left
-  background(#152935); 
-  //White White
-  fill(#FFFFFF);
-  rect(width-350, 0, width, height);
-  //**********
-
   // load graphics
   PImage logo = loadImage("fms_logo.png");
   logo.resize(250,0);
-  image(logo, 700, 30);
 
   textAlign(CENTER, TOP);
-  fill(#1f1f1f);
 
   //String[] fontList = PFont.list();
   //printArray(fontList);
   gameFont20 = createFont("Helvitica",20);
   gameFont50 = createFont("Helvitica",50);
 
-  textFont(gameFont50);
-  text("Laser Maze", 824, 100);
-  textFont(gameFont20);
   
   // List all the available serial ports
   println(Serial.list());
@@ -87,37 +77,64 @@ void setup () {
   
   // load sounds
   alarmSound = new SoundFile(this, sketchPath("Siren_Noise_short.mp3"));  // load sound effects
-  
-  startTime = millis();
+  powerUpSound = new SoundFile(this, sketchPath("Power_Up.wav"));  // load sound effects
+  countDownSound = new SoundFile(this, sketchPath("Countdown.mp3"));  // load sound effects
 }
 
 void draw () {
-    MazeData sensorData = getSensorData(demoMode); //Get Current Data (from serial or demo)
-    if (sensorData == null) return;
-    
+  mazeData.update();
+
+  //**********
+  // set inital background layout:
+  //Bue left
+  background(#152935); 
+  //White White
+  fill(#FFFFFF);
+  rect(width-350, 0, width, height);
+  //**********
+  fill(#1f1f1f);
+ // image(logo, 700, 30);
+  textFont(gameFont50);
+  text("Laser Maze", 824, 100);
+  textFont(gameFont20);
+
+    try
+    {
+      mazeData.setSensorData(getSensorData(demoMode));
+    }
+    catch (Exception e)
+    {
+      println(e);
+    }
+
+    textAlign(LEFT, TOP);
+    stroke(#FFFFFF);  // grey
+    fill(#FFFFFF);  // grey
+    text("State:  " + mazeData.getGameState(), 10, 470);
+
     startButton = new Button(700, 410, "Start", #749ECA);
     startButton.draw();
-    stopButton = new Button(850, 410, "Stop", #43f381);
-    stopButton.draw();
+    resetButton = new Button(850, 410, "Reset", #aa00aa);
+    resetButton.draw();
     
     //Create a bar graph, set the data and draw it (x4)
     SensorBar bar0 = new SensorBar(30,10); //instantiate a bar (visual representation) with an X and Y for where I want this bar to draw
-    bar0.setSensorValues(sensorData.getSensor0Value(), sensorData.getLowThreathold0());
+    bar0.setSensorValues(mazeData.getSensor0Value(), mazeData.getLowThreathold0());
     bar0.setLabel("Sensor 1");
     bar0.draw();
 
     SensorBar bar1 = new SensorBar(130,10);
-    bar1.setSensorValues(sensorData.getSensor1Value(), sensorData.getLowThreathold1());
+    bar1.setSensorValues(mazeData.getSensor1Value(), mazeData.getLowThreathold1());
     bar1.setLabel("Sensor 2");
     bar1.draw();
 
     SensorBar bar2 = new SensorBar(230,10);
-    bar2.setSensorValues(sensorData.getSensor2Value(), sensorData.getLowThreathold2());
+    bar2.setSensorValues(mazeData.getSensor2Value(), mazeData.getLowThreathold2());
     bar2.setLabel("Sensor 3");
     bar2.draw();
 
     SensorBar bar3 = new SensorBar(330,10);
-    bar3.setSensorValues(sensorData.getSensor3Value(), sensorData.getLowThreathold3());
+    bar3.setSensorValues(mazeData.getSensor3Value(), mazeData.getLowThreathold3());
     bar3.setLabel("Sensor 4");
     bar3.draw();
 
@@ -127,26 +144,23 @@ void draw () {
     bar4.draw();
 
     Alarm alarm = new Alarm(750,220);
-    if (!gamePaused)
-      alarm.setIsAlarmTripped(sensorData.isBeamBroken());
+    if (!mazeData.isGamePaused())
+      alarm.setIsAlarmTripped(mazeData.isBeamBroken());
     alarm.draw();
 
-    if (!gamePaused)
-      ellapsedTime = millis() - startTime;
-
     // Time to sound the alarm?
-    if (!gamePaused && sensorData.isBeamBroken())
+    if (!mazeData.isGamePaused() && mazeData.isBeamBroken())
     {
       if (!demoMode)
         myPort.write('1'); //Tell the arduino that the threahold has been crossed so that it can take action.
       
-      println("ALARM " + alarmsTriggered + "! Beam " + sensorData.getBrokenBeam() + " has been broken");
-      alarmsTriggered+=1;
+      println("ALARM " + mazeData.getBeamsBroken() + "! Beam " + mazeData.getBrokenBeam() + " has been broken");
       
       soundAlarm();
       delay(1000); //1 seconds
-      ellapsedTime = 0;
-      startTime = millis();
+      
+      //Game done. Flip back to attract mode
+      mazeData.setGameState(MazeData.STATE_ATTRACT);
     }
     else
     {
@@ -165,17 +179,31 @@ void draw () {
     rect(timeX, timeY, timeWidth, timeHeight);
 
     fill(#303030);  // grey
-    String formattedTime = nf(float(ellapsedTime) / float(1000),0,3);
+    String formattedTime = nf(float(mazeData.getEllapsedTime()) / float(1000),0,3);
     textSize(20);
     textAlign(CENTER, TOP);
     
     String label = "Ellapsed Time";
-    if (gamePaused)
+    if (mazeData.isGamePaused())
       label = "PAUSED";
       
     text(label, timeX + timeWidth/2, timeY);
     text(formattedTime, timeX + timeWidth/2, timeY + 30);
-
+    
+    
+    if (mazeData.getGameState() == MazeData.STATE_RESETTING)  
+    {
+      powerUpSound.play();
+      delay(1000);
+      mazeData.setGameState(MazeData.STATE_ATTRACT);
+    }
+    
+    if (mazeData.getGameState() == MazeData.STATE_GET_READY)  
+    {
+      countDownSound.play();
+      delay(int(countDownSound.duration()) * 1050);
+      mazeData.setGameState(MazeData.STATE_RUNNING);
+    }
   }
 
 void soundAlarm()
@@ -186,11 +214,13 @@ void soundAlarm()
 void mousePressed() {
   if (startButton.isMouseOver())
   {
-     gamePaused = !gamePaused;
+    
+     mazeData.setGameState( MazeData.STATE_GET_READY );
   }
   
-  if (stopButton.isMouseOver())
+  if (resetButton.isMouseOver())
   {
+    mazeData.resetGame();
   }
 }
 
@@ -320,15 +350,32 @@ class SensorBar extends GuiComponent {
 
 //Sensor State
 class MazeData {
-    private int sensor0Value;
-    private int sensor1Value;
-    private int sensor2Value;
-    private int sensor3Value;
-    
-    private int lowThreshold0;
-    private int lowThreshold1;
-    private int lowThreshold2;
-    private int lowThreshold3;
+  
+  final static public int STATE_RESETTING = 0;
+  final static public int STATE_GET_READY = 5; //User has pressed start - count down!
+  final static public int STATE_RUNNING = 1;
+  final static public  int STATE_BEAMBROKEN = 2;
+  final static public  int STATE_ATTRACT = 3;
+  final static public  int STATE_PAUSED = 4;
+  
+  private boolean gamePaused;
+  
+  private int gameState;  
+  private int beamsBroken;
+  
+  private int sensor0Value;
+  private int sensor1Value;
+  private int sensor2Value;
+  private int sensor3Value;
+  
+  private int lowThreshold0;
+  private int lowThreshold1;
+  private int lowThreshold2;
+  private int lowThreshold3;
+  
+  //Timing data
+  private int startTime;
+  private int ellapsedTime;
     
     MazeData()
     {
@@ -341,11 +388,42 @@ class MazeData {
       this.lowThreshold1 = 0;
       this.lowThreshold2 = 0;
       this.lowThreshold3 = 0;
+      
+      resetGame();
     }
     
-    MazeData(String inputValues) throws Exception
+    public void update()
     {
-      this(); // Call default contructor to set defatult values
+      if (this.gameState == STATE_RUNNING)
+        ellapsedTime = millis() - startTime;
+    }
+    
+    public int getEllapsedTime()
+    {
+        return ellapsedTime;
+    }
+    
+    public void resetGame()
+    {
+      this.gameState = STATE_RESETTING;
+      
+      this.beamsBroken = 0;
+
+      this.ellapsedTime = 0;
+      this.startTime = 0;
+    }
+    
+    public boolean isGamePaused()
+    {
+      return this.gamePaused;
+    }
+    public void setGamePaused(boolean paused)
+    {
+       this.gamePaused = paused;
+    }
+     
+    public void setSensorData(String inputValues) throws Exception
+    {
       //intln("raw:'" + inputValues + "'");
       if (inputValues == null)
       {
@@ -403,7 +481,7 @@ class MazeData {
       return this.lowThreshold3;
     }
     
-    public int getBrokenBeam()
+    private int getBrokenBeam()
     {
         if (this.sensor0Value < this.lowThreshold0)
         {
@@ -431,16 +509,42 @@ class MazeData {
     
     boolean isBeamBroken()
     {
-      return (getBrokenBeam() > -1);
+      int brokenBeam = getBrokenBeam();
+      if ((brokenBeam > -1) || keyPressed)
+      {
+        beamsBroken++;
+        return true;
+      }
+      
+      return false;
+    }
+    
+    public int getBeamsBroken()
+    {
+      return this.beamsBroken; 
     }
     
     String toString()
     {
       return sensor0Value + "," + sensor1Value + "," + sensor2Value + "," + sensor3Value;
     }
+    
+    public int getGameState()
+    {
+      return this.gameState;
+    }
+    public void setGameState(int newState)
+    {
+      gameState = newState;
+      
+      if (newState == MazeData.STATE_RUNNING)
+      {
+        startTime = millis();
+      }
+    }
 }
 
-MazeData getSensorData(boolean mockData) {
+String getSensorData(boolean mockData) {
   if (mockData)
   {
     //Valid values are between 0-100 (will vary depending ont the resistors used on the sensor. Curently using 220ohm
@@ -454,15 +558,7 @@ MazeData getSensorData(boolean mockData) {
     lastSerialData = Mock0 + "," + Mock1 + "," + Mock2 + "," + Mock3;
   }
   
-  try
-  {
-    return new MazeData(lastSerialData);
-  }
-  catch (Exception e)
-  {
-    println(e);
-    return null;
-  }
+  return lastSerialData;
 }
 
 class Button extends GuiComponent {

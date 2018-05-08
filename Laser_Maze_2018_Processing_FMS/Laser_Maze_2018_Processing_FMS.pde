@@ -20,10 +20,15 @@ Input:
 Tuning:
   MazeData contains the data for the maze. if you want to 'tune' the threashold value, edit lowThreshold0, lowThreshold1,lowThreshold2,lowThreshold3
 --------
+
+Sounds used under Creative Commons by: 
+https://freesound.org/people/halomaniac/sounds/57364/
+https://freesound.org/people/Timbre/sounds/138002/
+--------
 */
 import processing.serial.*; // serial communication library
 import processing.sound.*;
- 
+
 boolean demoMode = true; //True to generate dummy data instead of reading from serial
 
 MazeData mazeData = new MazeData(); // This object holds the state of the game 
@@ -32,7 +37,8 @@ MazeData mazeData = new MazeData(); // This object holds the state of the game
 SoundFile alarmSound;
 SoundFile powerUpSound;
 SoundFile countDownSound;
-
+SoundFile gameWonSound;
+SoundFile powerDownSound;
 
 Serial myPort; // The serial port
 boolean alarm = false;  // is the alarm servo on or off
@@ -43,6 +49,7 @@ PFont gameFont20;
 PFont gameFont50;
 
 Button startButton; 
+Button stopButton; 
 Button resetButton; 
 
 PImage logo;
@@ -50,9 +57,9 @@ PImage logo;
 void setup () {
   // set the window size:
   size(1000, 500);
-  
+
   frameRate(10);  // Run 10 frames per second
-  
+
   // load graphics
   PImage logo = loadImage("fms_logo.png");
   logo.resize(250,0);
@@ -76,27 +83,34 @@ void setup () {
   }
   
   // load sounds
-  alarmSound = new SoundFile(this, sketchPath("Siren_Noise_short.mp3"));  // load sound effects
-  powerUpSound = new SoundFile(this, sketchPath("Power_Up.wav"));  // load sound effects
-  countDownSound = new SoundFile(this, sketchPath("Countdown.mp3"));  // load sound effects
+  alarmSound = new SoundFile(this, sketchPath("Siren_Noise_short.mp3"));
+  powerUpSound = new SoundFile(this, sketchPath("Power_Up2.mp3"));
+  countDownSound = new SoundFile(this, sketchPath("Countdown.mp3"));
+  gameWonSound = new SoundFile(this, sketchPath("57364__halomaniac__mission-complete-2-0.mp3"));
+  powerDownSound = new SoundFile(this, sketchPath("Power_Down.mp3"));
 }
 
 void draw () {
-  mazeData.update();
+  mazeData.update(); //Update game state for ellapsed time, etc.
 
   //**********
-  // set inital background layout:
-  //Bue left
-  background(#152935); 
-  //White White
+  //Set inital background layout:
+  // Blue left
+  background(#161616); // 152935
+  //White right
   fill(#FFFFFF);
   rect(width-350, 0, width, height);
-  //**********
+  //****
+  // Not sure what happened here, but I'm getting a nullpointer exception if I don't reload the image here EVERY TIME strange?!
+  logo = loadImage("fms_logo.png");
+  logo.resize(250,0);
+  image(logo, 700, 30);
+  //***
   fill(#1f1f1f);
- // image(logo, 700, 30);
   textFont(gameFont50);
   text("Laser Maze", 824, 100);
   textFont(gameFont20);
+  //**********
 
     try
     {
@@ -112,9 +126,23 @@ void draw () {
     fill(#FFFFFF);  // grey
     text("State:  " + mazeData.getGameState(), 10, 470);
 
-    startButton = new Button(700, 410, "Start", #749ECA);
+    startButton = new Button(700, 410, "Start", #003B70);
+    stopButton = new Button(700, 410, "Stop", #0071E4);
+    
+    if (mazeData.getGameState() == MazeData.STATE_RUNNING)
+    {
+      stopButton.setVisible(true);
+      startButton.setVisible(false);
+    }
+    else
+    {
+      stopButton.setVisible(false);
+      startButton.setVisible(true);
+    }
+    stopButton.draw();
     startButton.draw();
-    resetButton = new Button(850, 410, "Reset", #aa00aa);
+
+    resetButton = new Button(850, 410, "Reset", #0071E4);
     resetButton.draw();
     
     //Create a bar graph, set the data and draw it (x4)
@@ -194,7 +222,7 @@ void draw () {
     if (mazeData.getGameState() == MazeData.STATE_RESETTING)  
     {
       powerUpSound.play();
-      delay(1000);
+      delay(10);
       mazeData.setGameState(MazeData.STATE_ATTRACT);
     }
     
@@ -204,6 +232,21 @@ void draw () {
       delay(int(countDownSound.duration()) * 1050);
       mazeData.setGameState(MazeData.STATE_RUNNING);
     }
+    
+    if (mazeData.getGameState() == MazeData.STATE_COMPLETE)
+    {
+      gameWonSound.amp(1);
+      gameWonSound.play();
+      delay(int(gameWonSound.duration()) * 1000);
+
+      delay(1000);
+
+      powerDownSound.amp(0.1);
+      powerDownSound.play();
+      delay(int(powerDownSound.duration()) * 1000);
+      
+      mazeData.setGameState(MazeData.STATE_ATTRACT);
+    }
   }
 
 void soundAlarm()
@@ -212,13 +255,17 @@ void soundAlarm()
 }
 
 void mousePressed() {
-  if (startButton.isMouseOver())
+  if (startButton.isVisible() && startButton.isMouseOver())
   {
-    
      mazeData.setGameState( MazeData.STATE_GET_READY );
   }
   
-  if (resetButton.isMouseOver())
+  if (stopButton.isVisible() && stopButton.isMouseOver())
+  {
+    mazeData.setGameState( MazeData.STATE_COMPLETE );
+  }
+
+  if (resetButton.isVisible() && resetButton.isMouseOver())
   {
     mazeData.resetGame();
   }
@@ -270,8 +317,8 @@ class Alarm extends GuiComponent {
 class SensorBar extends GuiComponent {
   private String sensorLabel; //Name to show at the bottom of the sensor bar
 
-  private color borderColor = #D1D1D1;
-  private color backgroundColor = #F1F1F1;
+  private color borderColor = #D1D1D1; //dont care
+  private color backgroundColor = #00505E;
   private color thresholdColor = #FF0000;
 
   private int sensorValue, lowerBound;
@@ -306,20 +353,22 @@ class SensorBar extends GuiComponent {
     color returnColor = #00FF00;
     
     if ( value < lowerBound )
-      returnColor = #CE0000; //RED
+      returnColor = #8B270A; //#CE0000; //RED
     else if ( value < (lowerBound + 20)) 
-      returnColor =  #E8922A; //Orange
+      returnColor =  #EBA202; //#E8922A; //Orange
     else
-      returnColor = #AACA74; //Green 
+      returnColor = #00BBF6; //#AACA74; //Green 
     
     return returnColor;
   }
 
   void draw()
   {
+    
     //Graph Border
-    stroke(borderColor);  // dark grey
-    strokeWeight(2);
+    noStroke();
+    //stroke(borderColor);  // dark grey
+    //strokeWeight(2);
     
     //Graph Background
     fill(backgroundColor);  // grey
@@ -357,6 +406,7 @@ class MazeData {
   final static public  int STATE_BEAMBROKEN = 2;
   final static public  int STATE_ATTRACT = 3;
   final static public  int STATE_PAUSED = 4;
+  final static public  int STATE_COMPLETE = 6; //Player has wont he game
   
   private boolean gamePaused;
   
@@ -567,6 +617,8 @@ class Button extends GuiComponent {
   private String buttonText = "_undefined_";
   private color buttonColor = #749ECA;
   
+  private boolean isVisible = true;
+  
   Button(int x, int y, String text, color buttonColor)
   {
     super(x,y, 130,50);
@@ -586,8 +638,21 @@ class Button extends GuiComponent {
     }    
   }
   
+  public void setVisible(boolean canYouSeeMe)
+  {
+    this.isVisible = canYouSeeMe;
+  }
+  
+  public boolean isVisible()
+  {
+    return this.isVisible;
+  }
+  
   void draw()
   {
+    if (!this.isVisible())
+      return;
+      
     //Default 'off' colors.
     color fillColor = this.buttonColor;
     
@@ -601,7 +666,9 @@ class Button extends GuiComponent {
 
     //Draw Button
     fill(fillColor);
-    stroke(#888888);  //Darker outline 
+    
+    noStroke();
+    //stroke(#888888);  //Darker outline 
 
     rect(this.getX(), this.getY(), this.getWidth(), this.getHeight(), 2);
     fill(#FFFFFF);  // Text Color

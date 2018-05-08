@@ -16,6 +16,12 @@ Input:
   Data format: csv list of readings from a photoresistor. Example: 84,94,32,12
   Lower values mean less light.
   If and indidual value falls below a low threshold value (See MazeData), the 'alarm' is triggered.
+
+Output / Communcations (Messages sent to attached Arduino)
+  "0" - Everything is fine. The game is running. No beams broken.
+  "1" - Beam has been broken. We've sounded an alarm.
+  "2" - The game is to be reset back to a clean state. I.E. either booting UP or being reset AFTER the game has been won / lost and you want to play again.
+        Envisioning something like lights blink, lasers flicker, etc. to show 'booting up' visually.
   
 Tuning:
   MazeData contains the data for the maze. if you want to 'tune' the threashold value, edit lowThreshold0, lowThreshold1,lowThreshold2,lowThreshold3
@@ -221,6 +227,9 @@ void draw () {
     
     if (mazeData.getGameState() == MazeData.STATE_RESETTING)  
     {
+      if (!demoMode)
+        myPort.write('2'); //Tell the arduino that the get needs to be 'reset'
+
       powerUpSound.play();
       delay(10);
       mazeData.setGameState(MazeData.STATE_ATTRACT);
@@ -317,7 +326,6 @@ class Alarm extends GuiComponent {
 class SensorBar extends GuiComponent {
   private String sensorLabel; //Name to show at the bottom of the sensor bar
 
-  private color borderColor = #D1D1D1; //dont care
   private color backgroundColor = #00505E;
   private color thresholdColor = #FF0000;
 

@@ -48,6 +48,26 @@ void loop()
       // If data is available to read,
      int val = Serial.read(); // read it and store it in val from the processing app on the attached PC
 
+/* New Code to handle values from PC
+switch (val) {
+  case 0:
+     digitalWrite(ledPin, HIGH); //Turn led on
+     digitalWrite(laserPin, HIGH); //Turn laser on
+  break;
+  // case 1 Laser beam broken, turn lasers off
+  case 1:
+      digitalWrite(ledPin, LOW); //Turn led off
+      digitalWrite(laserPin, LOW); //Turn laser off
+  break;
+  // case 2 System reset
+  case 2:
+//reset system
+   systemReset();
+  break;
+}
+*/
+
+
     //ALARM
     if (val == '1') 
     {
@@ -68,4 +88,25 @@ void loop()
   Serial.println(serialMessage);
 
   delay(50); //Small delay
+}
+
+
+void systemReset() {
+  // turn alarm off
+  // turn lasers on
+  // reset PC so timer is 0, and start button is available.
+}
+
+void laserOn() {
+     digitalWrite(ledPin, HIGH); //Turn led on
+     digitalWrite(laserPin, HIGH); //Turn laser on
+}
+
+void laserOff() {
+     digitalWrite(ledPin, LOW); //Turn led on
+     digitalWrite(laserPin, LOW); //Turn laser on
+}
+
+void triggerAlarm() {
+  // digitalWrite(alarmPin, High);
 }

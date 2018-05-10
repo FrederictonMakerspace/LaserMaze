@@ -28,10 +28,12 @@ void setup()
   digitalWrite(laserPin, LOW); //Turn led off
 
   Serial.begin(9600);
+  laserOn();
 }
 
 void loop()
 {
+  
   //Read all resistors and store the valuye
   for (int i=0; i<resistorCount; i++)
   {
@@ -49,22 +51,27 @@ void loop()
      int val = Serial.read(); // read it and store it in val from the processing app on the attached PC
 
 // New Code to handle values from PC
-switch (val) {
-  case 0: //game running
-    laserOn();
-  break;
-  
-  case 1: // case 1 Laser beam broken, turn lasers off
-      laserOff();
-  break;
-  
-  case 2: // case 2 System reset
-//reset system
-   systemReset();
-  break;
+          switch (val) {
+          case 0: //game running
+            laserOn();
+          break;
+          
+          case 1: // case 1 Laser beam broken, turn lasers off
+              laserOff();
+          break;
+          
+          case 2: // case 2 System reset
+        //reset system
+           systemReset();
+          break;
+          default:
+            laserOn();
+          break;
+          }
+   }
+  else {
+//    laserOn();
 }
-
-
 
     //ALARM
 /*    if (val == '1') 
@@ -78,7 +85,7 @@ switch (val) {
      digitalWrite(laserPin, HIGH); //Turn laser on
      }
 */
-  }
+  
     
   //Wrap for compatibility with the laser processing sketch (comma separated values)
 //  String serialMessage = "0:" + (String)resistorValues[0] + ",0:" + (String)resistorValues[1] + ",0:" + (String)resistorValues[2] + ",0:"  + (String)resistorValues[3];
@@ -101,7 +108,7 @@ void systemReset() {
 void laserOn() {
      digitalWrite(ledPin, HIGH); //Turn led on
      digitalWrite(laserPin, HIGH); //Turn laser on
-  String serialMessage = "0:" + (String)resistorValues[0] + ",0:" + (String)resistorValues[1] + ",0:" + (String)resistorValues[2] + ",0:"  + (String)resistorValues[3];
+  String serialMessage = "0:" + (String)resistorValues[0] + "," + (String)resistorValues[1] + "," + (String)resistorValues[2] + ","  + (String)resistorValues[3];
 
   //Send to PC
   Serial.println(serialMessage);

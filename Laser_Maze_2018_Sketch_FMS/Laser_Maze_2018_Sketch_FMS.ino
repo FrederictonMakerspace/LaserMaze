@@ -70,7 +70,7 @@ void loop()
           }
    }
   else {
-//    laserOn();
+//    attract mode
 }
 
     //ALARM
@@ -106,13 +106,12 @@ void systemReset() {
 }
 
 void laserOn() {
-     digitalWrite(ledPin, HIGH); //Turn led on
-     digitalWrite(laserPin, HIGH); //Turn laser on
-  String serialMessage = "0:" + (String)resistorValues[0] + "," + (String)resistorValues[1] + "," + (String)resistorValues[2] + ","  + (String)resistorValues[3];
-
+      digitalWrite(ledPin, HIGH); //Turn led on
+      digitalWrite(laserPin, HIGH); //Turn laser on
+      String serialMessage = "0:" + (String)resistorValues[0] + "," + (String)resistorValues[1] + "," + (String)resistorValues[2] + ","  + (String)resistorValues[3];
   //Send to PC
-  Serial.println(serialMessage);
-  delay(50); //Small delay
+      Serial.println(serialMessage);
+      delay(50); //Small delay
 }
 
 void laserOff() {
@@ -125,3 +124,8 @@ void triggerAlarm() {
   // digitalWrite(alarmPin, High);
 
 }
+
+void attractMode() {
+  //random flash lasers faset and faster
+}
+

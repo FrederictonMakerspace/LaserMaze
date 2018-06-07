@@ -88,14 +88,10 @@ void loop()
           case '3':
             attractMode();
           break;
-  //        default:
-    //        laserOn();
-    //      break;
+
           }
    }
- // else {
-   // attractMode();
-//}
+
 
     //ALARM
 /*    if (val == '1') 

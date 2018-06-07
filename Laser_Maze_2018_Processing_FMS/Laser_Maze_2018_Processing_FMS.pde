@@ -414,7 +414,7 @@ class MazeData {
   final static public  int STATE_BEAMBROKEN = 2;
   final static public  int STATE_ATTRACT = 3;
   final static public  int STATE_PAUSED = 4;
-  final static public  int STATE_COMPLETE = 6; //Player has wont he game
+  final static public  int STATE_COMPLETE = 6; //Player has won he game
   
   private boolean gamePaused;
   

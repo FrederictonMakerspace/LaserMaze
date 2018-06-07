@@ -45,6 +45,8 @@ SoundFile powerUpSound;
 SoundFile countDownSound;
 SoundFile gameWonSound;
 SoundFile powerDownSound;
+SoundFile themeSongSound;
+boolean playThemeSong = true; // Set to false if you don't want this to play
 
 Serial myPort; // The serial port
 boolean alarm = false;  // is the alarm servo on or off
@@ -56,7 +58,8 @@ PFont gameFont50;
 
 Button startButton; 
 Button stopButton; 
-Button resetButton; 
+Button resetButton;
+Button themeMusicButton;
 
 PImage logo;
 
@@ -94,10 +97,26 @@ void setup () {
   countDownSound = new SoundFile(this, sketchPath("Countdown.mp3"));
   gameWonSound = new SoundFile(this, sketchPath("57364__halomaniac__mission-complete-2-0.mp3"));
   powerDownSound = new SoundFile(this, sketchPath("Power_Down.mp3"));
+  themeSongSound = new SoundFile(this, sketchPath("Mission Impossible Theme.mp3"));
+  
+  startButton = new Button(700, 410, "Start", #003B70);
+  stopButton = new Button(700, 410, "Stop", #0071E4);
+  themeMusicButton = new Button(770, 470, "Music", #0d0d0d);
+  themeMusicButton.setHeight(25);
 }
 
 void draw () {
   mazeData.update(); //Update game state for ellapsed time, etc.
+
+  // Check if we should play the theme song, or mute it
+  if (playThemeSong)
+  {
+    themeSongSound.amp(1);
+  }
+  else
+  {
+    themeSongSound.amp(0);
+  }
 
   //**********
   //Set inital background layout:
@@ -132,8 +151,7 @@ void draw () {
     fill(#FFFFFF);  // grey
     text("State:  " + mazeData.getGameState(), 10, 470);
 
-    startButton = new Button(700, 410, "Start", #003B70);
-    stopButton = new Button(700, 410, "Stop", #0071E4);
+    themeMusicButton.draw();
     
     if (mazeData.getGameState() == MazeData.STATE_RUNNING)
     {
@@ -185,6 +203,8 @@ void draw () {
     // Time to sound the alarm?
     if (!mazeData.isGamePaused() && mazeData.isBeamBroken())
     {
+      themeSongSound.stop();
+
       if (!demoMode)
         myPort.write('1'); //Tell the arduino that the threahold has been crossed so that it can take action.
       
@@ -227,6 +247,8 @@ void draw () {
     
     if (mazeData.getGameState() == MazeData.STATE_RESETTING)  
     {
+      themeSongSound.stop();
+
       if (!demoMode)
         myPort.write('2'); //Tell the arduino that the get needs to be 'reset'
 
@@ -239,11 +261,15 @@ void draw () {
     {
       countDownSound.play();
       delay(int(countDownSound.duration()) * 1050);
+      
+      themeSongSound.play();
       mazeData.setGameState(MazeData.STATE_RUNNING);
     }
     
     if (mazeData.getGameState() == MazeData.STATE_COMPLETE)
     {
+      themeSongSound.stop();
+      
       gameWonSound.amp(1);
       gameWonSound.play();
       delay(int(gameWonSound.duration()) * 1000);
@@ -277,6 +303,11 @@ void mousePressed() {
   if (resetButton.isVisible() && resetButton.isMouseOver())
   {
     mazeData.resetGame();
+  }
+  
+if (themeMusicButton.isVisible() && themeMusicButton.isMouseOver())
+  {
+    playThemeSong = !playThemeSong;
   }
 }
 
@@ -739,9 +770,17 @@ class GuiComponent
   {
      return this.w;
   }
+  public void setWidth(int w)
+  {
+    this.w = w;
+  }  
   public int getHeight()
   {
      return this.h;
+  }
+  public void setHeight(int h)
+  {
+    this.h = h;
   }
   
   void draw()

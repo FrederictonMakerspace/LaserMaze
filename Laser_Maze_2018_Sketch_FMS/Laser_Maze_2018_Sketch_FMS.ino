@@ -8,6 +8,7 @@ const int laserPin0=8;       // Laser (5mw) connected to pin at Arduino pin 8
 const int laserPin1=9;       // Laser (5mw) connected to pin at Arduino pin 9
 const int laserPin2=10;       // Laser (5mw) connected to pin at Arduino pin 10
 const int laserPin3=11;       // Laser (5mw) connected to pin at Arduino pin 11
+int SystemStatus=4;
 
 const int resistorPins[] = {A0, A1, A2, A3}; //Photoresistor at Arduino analog pin A0
 //const int laserPins[] = {8, 9, 10, 11}; //Photoresistor at Arduino analog pin A0
@@ -64,6 +65,9 @@ void loop()
     resistorValues[i] = analogRead(resistorToRead);
   }
 
+  String serialMessage = (String)SystemStatus + ":" + (String)resistorValues[0] + "," + (String)resistorValues[1] + "," + (String)resistorValues[2] + ","  + (String)resistorValues[3];
+  Serial.println(serialMessage);
+
   //Send the values over to the attached PC
   //Check if the PC sent an alarm value
    if (Serial.available()) 
@@ -73,10 +77,12 @@ void loop()
      
           switch (val) {
           case '0': //game running
+            SystemStatus=0;
             laserOn();
           break;
           
           case '1': // case 1 Laser beam broken, turn lasers off
+              SystemStatus=1;
               laserOff();
           break;
           
@@ -88,7 +94,6 @@ void loop()
           case '3':
             attractMode();
           break;
-
           }
    }
 
@@ -114,17 +119,33 @@ void loop()
   //Serial.println(serialMessage);
 
   //delay(50); //Small delay
+
 }
 
 
 void systemReset() {
+    laserOn();
+    delay(200);
+      digitalWrite(ledPin, LOW); //Turn led on
+      digitalWrite(laserPin0, LOW); //Turn laser on
+      digitalWrite(laserPin1, LOW); //Turn laser on
+      digitalWrite(laserPin2, LOW); //Turn laser on
+      digitalWrite(laserPin3, LOW); //Turn laser on
+      
+      digitalWrite(ledPin, HIGH); //Turn led on
+      digitalWrite(laserPin0, HIGH); //Turn laser on
+      delay(200);
+      digitalWrite(laserPin1, HIGH); //Turn laser on
+      delay(200);
+      digitalWrite(laserPin2, HIGH); //Turn laser on
+      delay(200);
+      digitalWrite(laserPin3, HIGH); //Turn laser on
   // turn alarm off
   // turn lasers on
     //flash lasers randomly on and off
   // then let the PC know I'm reset
   // reset PC so timer is 0, and start button is available.
    // digitalWrite(alarmPin, High);
-    laserOn();
     String serialMessage = "1:"; //need to verify what to send to PC
 }
 
@@ -134,10 +155,6 @@ void laserOn() {
       digitalWrite(laserPin1, HIGH); //Turn laser on
       digitalWrite(laserPin2, HIGH); //Turn laser on
       digitalWrite(laserPin3, HIGH); //Turn laser on
-      String serialMessage = "0:" + (String)resistorValues[0] + "," + (String)resistorValues[1] + "," + (String)resistorValues[2] + ","  + (String)resistorValues[3];
-  //Send to PC
-      Serial.println(serialMessage);
-      delay(50); //Small delay
 }
 
 void laserOff() {

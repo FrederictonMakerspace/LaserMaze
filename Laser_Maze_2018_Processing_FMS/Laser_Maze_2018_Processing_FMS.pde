@@ -50,7 +50,6 @@ SoundFile countDownSound;
 SoundFile gameWonSound;
 SoundFile powerDownSound;
 SoundFile themeSongSound;
-boolean playThemeSong = true; // Set to false if you don't want this to play
 
 Serial myPort; // The serial port
 boolean alarm = false;  // is the alarm servo on or off
@@ -64,7 +63,7 @@ Button startButton;
 Button stopButton; 
 Button resetButton;
 Button attractButton;
-Button themeMusicButton;
+Toggle themeMusicButton;
 
 PImage logo;
 
@@ -78,6 +77,11 @@ void setup () {
   PImage logo = loadImage("fms_logo.png");
   logo.resize(250,0);
   cp5 = new ControlP5(this);
+
+  themeMusicButton = cp5.addToggle("Theme Music")
+    .setPosition(740,465)
+    .setValue(true)
+    .setColorLabel(#0d0d0d);
 
 /*cp5.addSlider("v1")
        .setPosition(40, 40)
@@ -115,8 +119,6 @@ void setup () {
   startButton = new Button(700, 410, "Start", #003B70);
   stopButton = new Button(700, 410, "Stop", #0071E4);
 
-  themeMusicButton = new Button(700, 470, "Music", #0d0d0d);
-  themeMusicButton.setHeight(25);
   attractButton = new Button(850, 470, "Attract", #0d0d0d);
   attractButton.setHeight(25);
 }
@@ -125,7 +127,7 @@ void draw () {
   mazeData.update(); //Update game state for ellapsed time, etc.
 
   // Check if we should play the theme song, or mute it
-  if (playThemeSong)
+  if (themeMusicButton.getBooleanValue() == true)
   {
     themeSongSound.amp(1);
   }
@@ -167,8 +169,6 @@ void draw () {
     textAlign(LEFT, TOP);
     stroke(#FFFFFF);  // grey
     fill(#FFFFFF);  // grey
-
-    themeMusicButton.draw();
     
     if (mazeData.getGameState() == MazeData.STATE_RUNNING)
     {
@@ -327,11 +327,6 @@ void mousePressed() {
   {
     mazeData.setGameState( MazeData.STATE_ATTRACT );
     sendStateToArduino('3');
-  }
-
-if (themeMusicButton.isVisible() && themeMusicButton.isMouseOver())
-  {
-    playThemeSong = !playThemeSong;
   }
 }
 

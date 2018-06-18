@@ -22,6 +22,7 @@ Output / Communcations (Messages sent to attached Arduino)
   "1" - Beam has been broken. We've sounded an alarm.
   "2" - The game is to be reset back to a clean state. I.E. either booting UP or being reset AFTER the game has been won / lost and you want to play again.
         Envisioning something like lights blink, lasers flicker, etc. to show 'booting up' visually.
+  "3" - Attract Mode
   
 Tuning:
   MazeData contains the data for the maze. if you want to 'tune' the threashold value, edit lowThreshold0, lowThreshold1,lowThreshold2,lowThreshold3
@@ -59,6 +60,7 @@ PFont gameFont50;
 Button startButton; 
 Button stopButton; 
 Button resetButton;
+Button attractButton;
 Button themeMusicButton;
 
 PImage logo;
@@ -67,7 +69,7 @@ void setup () {
   // set the window size:
   size(1000, 500);
 
-  frameRate(10);  // Run 10 frames per second
+  frameRate(5);  // Run 5 frames per second
 
   // load graphics
   PImage logo = loadImage("fms_logo.png");
@@ -89,6 +91,8 @@ void setup () {
     myPort = new Serial(this, Serial.list()[2], 9600);
     // don't generate a serialEvent() unless you get a newline character:
     myPort.bufferUntil('\n');
+    
+    sendStateToArduino('2'); // Send 'reset'
   }
   
   // load sounds
@@ -101,8 +105,11 @@ void setup () {
   
   startButton = new Button(700, 410, "Start", #003B70);
   stopButton = new Button(700, 410, "Stop", #0071E4);
-  themeMusicButton = new Button(770, 470, "Music", #0d0d0d);
+
+  themeMusicButton = new Button(700, 470, "Music", #0d0d0d);
   themeMusicButton.setHeight(25);
+  attractButton = new Button(850, 470, "Attract", #0d0d0d);
+  attractButton.setHeight(25);
 }
 
 void draw () {
@@ -149,7 +156,6 @@ void draw () {
     textAlign(LEFT, TOP);
     stroke(#FFFFFF);  // grey
     fill(#FFFFFF);  // grey
-    text("State:  " + mazeData.getGameState(), 10, 470);
 
     themeMusicButton.draw();
     
@@ -168,6 +174,8 @@ void draw () {
 
     resetButton = new Button(850, 410, "Reset", #0071E4);
     resetButton.draw();
+    
+    attractButton.draw();
     
     //Create a bar graph, set the data and draw it (x4)
     SensorBar bar0 = new SensorBar(30,10); //instantiate a bar (visual representation) with an X and Y for where I want this bar to draw
@@ -201,27 +209,21 @@ void draw () {
     alarm.draw();
 
     // Time to sound the alarm?
-    if (!mazeData.isGamePaused() && mazeData.isBeamBroken())
+    if (!mazeData.isGamePaused() && (mazeData.getGameState() == MazeData.STATE_RUNNING) && mazeData.isBeamBroken())
     {
       themeSongSound.stop();
 
-      if (!demoMode)
-        myPort.write('1'); //Tell the arduino that the threahold has been crossed so that it can take action.
+      sendStateToArduino('1'); //Tell the arduino that the threashold has been crossed so that it can take action.
       
       println("ALARM " + mazeData.getBeamsBroken() + "! Beam " + mazeData.getBrokenBeam() + " has been broken");
-      
+
+      //Game done. Keep lasers off (need to manual set back on)
+      mazeData.setGameState(MazeData.STATE_LOST);
+
       soundAlarm();
       delay(1000); //1 seconds
       
-      //Game done. Flip back to attract mode
-      mazeData.setGameState(MazeData.STATE_ATTRACT);
-    }
-    else
-    {
-      if (!demoMode)
-        myPort.write('0'); 
-    }
-    
+    }   
     
     //Draw elapsed Time
     int timeX = 730;
@@ -249,16 +251,16 @@ void draw () {
     {
       themeSongSound.stop();
 
-      if (!demoMode)
-        myPort.write('2'); //Tell the arduino that the get needs to be 'reset'
+      sendStateToArduino('2'); //Tell the arduino that the get needs to be 'reset'
 
       powerUpSound.play();
-      delay(10);
+      delay(100);
       mazeData.setGameState(MazeData.STATE_ATTRACT);
     }
     
     if (mazeData.getGameState() == MazeData.STATE_GET_READY)  
     {
+      sendStateToArduino('0'); // let the arduino know it's go time!
       countDownSound.play();
       delay(int(countDownSound.duration()) * 1050);
       
@@ -282,6 +284,11 @@ void draw () {
       
       mazeData.setGameState(MazeData.STATE_ATTRACT);
     }
+    
+    
+  textAlign(LEFT, TOP);
+  text("State:  " + mazeData.getGameStateLabel() + " (" + mazeData.getGameState() + ")", 13, 470);
+
   }
 
 void soundAlarm()
@@ -304,7 +311,13 @@ void mousePressed() {
   {
     mazeData.resetGame();
   }
-  
+
+  if (attractButton.isVisible() && attractButton.isMouseOver())
+  {
+    mazeData.setGameState( MazeData.STATE_ATTRACT );
+    sendStateToArduino('3');
+  }
+
 if (themeMusicButton.isVisible() && themeMusicButton.isMouseOver())
   {
     playThemeSong = !playThemeSong;
@@ -436,7 +449,20 @@ class SensorBar extends GuiComponent {
   }
 }
 
-//Sensor State
+public void sendStateToArduino(char state)
+{
+  try
+  {
+    if (myPort != null)
+      myPort.write(state);
+  }
+  catch (Exception e)
+  {
+    println("Error sending state to arduino: " + e);
+  }
+}
+
+//Game State
 class MazeData {
   
   final static public int STATE_RESETTING = 0;
@@ -444,8 +470,10 @@ class MazeData {
   final static public int STATE_RUNNING = 1;
   final static public  int STATE_BEAMBROKEN = 2;
   final static public  int STATE_ATTRACT = 3;
-  final static public  int STATE_PAUSED = 4;
+  final static public  int STATE_PAUSED = 9;
   final static public  int STATE_COMPLETE = 6; //Player has won he game
+  final static public  int STATE_LOST = 7; //Player has won he game
+  
   
   private boolean gamePaused;
   
@@ -513,10 +541,9 @@ class MazeData {
      
     public void setSensorData(String inputValues) throws Exception
     {
-      //intln("raw:'" + inputValues + "'");
       if (inputValues == null)
       {
-        throw new Exception("Null is a valid constructor to MazeData");
+        throw new Exception("Null is NOT a valid constructor to MazeData");
       }
       else
       {
@@ -617,7 +644,38 @@ class MazeData {
     {
       return sensor0Value + "," + sensor1Value + "," + sensor2Value + "," + sensor3Value;
     }
-    
+    public String getGameStateLabel()
+    {
+      String stateLabel = "_bad_";
+      switch(this.gameState) {
+        case 0: 
+          stateLabel = "STATE_RESETTING";
+          break;
+        case 1: 
+          stateLabel = "STATE_RUNNING";
+          break;
+        case 2: 
+          stateLabel = "STATE_BEAMBROKEN";
+          break;
+        case 3: 
+          stateLabel = "STATE_ATTRACT";
+          break;
+        case 6: 
+          stateLabel = "STATE_COMPLETE";
+          break;
+        case 7: 
+          stateLabel = "STATE_LOST";
+          break;
+       case 9: 
+          stateLabel = "STATE_PAUSED";
+          break;
+        default:
+          stateLabel = "Unknown";
+          break;
+      }
+      
+      return stateLabel;
+    }
     public int getGameState()
     {
       return this.gameState;
@@ -714,7 +772,7 @@ class Button extends GuiComponent {
     textSize(20);
     
     textAlign(CENTER, CENTER);
-    text(this.buttonText, this.getX() + this.getWidth()/2, this.getY() + this.getHeight()/2);
+    text(this.buttonText, this.getX() + this.getWidth()/2, this.getY() + this.getHeight()/2 - 3);
   }
 }
 
@@ -723,10 +781,16 @@ class Button extends GuiComponent {
 Called when serial data is read. Then we store the results which are used in getSensorData()
 */
 void serialEvent (Serial myPort) {
-  //Assume the data is in a comma string "12,45,76,80"
+  //Assume the data is in a comma string "n:12,45,76,80"
 
   lastSerialData = myPort.readStringUntil('\n');    // get the ASCII string
+  if (lastSerialData == null) return;
+  
   lastSerialData = lastSerialData.replace("\n","");
+  
+  //strip off state (n:)
+  lastSerialData = lastSerialData.substring(2, lastSerialData.length());
+  println(lastSerialData);
 }
 
 void stop() {

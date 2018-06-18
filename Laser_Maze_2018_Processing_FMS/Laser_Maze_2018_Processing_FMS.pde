@@ -35,6 +35,9 @@ https://freesound.org/people/Timbre/sounds/138002/
 */
 import processing.serial.*; // serial communication library
 import processing.sound.*;
+import controlP5.*;
+
+ControlP5 cp5;
 
 boolean demoMode = true; //True to generate dummy data instead of reading from serial
 
@@ -74,9 +77,15 @@ void setup () {
   // load graphics
   PImage logo = loadImage("fms_logo.png");
   logo.resize(250,0);
+  cp5 = new ControlP5(this);
 
-  textAlign(CENTER, TOP);
-
+/*cp5.addSlider("v1")
+       .setPosition(40, 40)
+       .setSize(200, 20)
+       .setRange(100, 300)
+       .setValue(250)
+       .setColorCaptionLabel(color(20,20,20));
+*/
   //String[] fontList = PFont.list();
   //printArray(fontList);
   gameFont20 = createFont("Helvitica",20);
@@ -124,6 +133,8 @@ void draw () {
   {
     themeSongSound.amp(0);
   }
+
+  textAlign(CENTER, TOP);
 
   //**********
   //Set inital background layout:
@@ -437,7 +448,6 @@ class SensorBar extends GuiComponent {
     
     //Scale threshold
     int scaledThreshold = floor(map(this.lowerBound, 0, 100, 0, this.getHeight()));  // map the input value to fit within the graph
-    //line(this.barX, this.barY + (this.barHeight - scaledThreshold), this.barX + this.barWidth, this.barY + (this.barHeight - scaledThreshold));
     
     line(this.getX(), this.getY() + (this.getHeight() - scaledThreshold), this.getX() + this.getWidth(), this.getY() + (this.getHeight() - scaledThreshold));
 
@@ -706,6 +716,13 @@ String getSensorData(boolean mockData) {
   }
   
   return lastSerialData;
+}
+
+class Slider extends GuiComponent {
+  
+  public void draw() {
+  
+  }
 }
 
 class Button extends GuiComponent {

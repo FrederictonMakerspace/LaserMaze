@@ -12,8 +12,8 @@ Demo Mode
 
 --------
 Input:
-  Expects serial data (4 comma separated values representing 4 sensors). 
-  Data format: csv list of readings from a photoresistor. Example: 84,94,32,12
+  Expects serial data (4 comma separated values representing 4 sensors). Prepended with the 'state' of the arduino
+  Data format: csv list of readings from a photoresistor. Example: 3:84,94,32,12
   Lower values mean less light.
   If and indidual value falls below a low threshold value (See MazeData), the 'alarm' is triggered.
 
@@ -74,14 +74,14 @@ void setup () {
   frameRate(5);  // Run 5 frames per second
 
   // load graphics
-  PImage logo = loadImage("fms_logo.png");
+  logo = loadImage("Logo_type_white.png");
   logo.resize(250,0);
   cp5 = new ControlP5(this);
 
   themeMusicButton = cp5.addToggle("Theme Music")
     .setPosition(740,465)
     .setValue(true)
-    .setColorLabel(#0d0d0d);
+    .setColorLabel(#FFFFFF);
 
 /*cp5.addSlider("v1")
        .setPosition(40, 40)
@@ -141,34 +141,25 @@ void draw () {
   //**********
   //Set inital background layout:
   // Blue left
-  background(#161616); // 152935
-  //White right
-  fill(#FFFFFF);
-  rect(width-350, 0, width, height);
-  //****
-  // Not sure what happened here, but I'm getting a nullpointer exception if I don't reload the image here EVERY TIME strange?!
-  logo = loadImage("fms_logo.png");
+  background(#1D364A); // 152935
+
+  //meters background
+  fill(#162836);
+  noStroke();
+  rect(10, 10, 500, height - 20);
+  
   logo.resize(250,0);
   image(logo, 700, 30);
   //***
-  fill(#1f1f1f);
+  fill(#ffffff);
   textFont(gameFont50);
   text("Laser Maze", 824, 100);
   textFont(gameFont20);
   //**********
 
-    try
-    {
-      mazeData.setSensorData(getSensorData(demoMode));
-    }
-    catch (Exception e)
-    {
-      println(e);
-    }
-
     textAlign(LEFT, TOP);
-    stroke(#FFFFFF);  // grey
-    fill(#FFFFFF);  // grey
+    stroke(#FFFFFF);
+    fill(#FFFFFF);
     
     if (mazeData.getGameState() == MazeData.STATE_RUNNING)
     {
@@ -189,27 +180,27 @@ void draw () {
     attractButton.draw();
     
     //Create a bar graph, set the data and draw it (x4)
-    SensorBar bar0 = new SensorBar(30,10); //instantiate a bar (visual representation) with an X and Y for where I want this bar to draw
+    SensorBar bar0 = new SensorBar(30,20); //instantiate a bar (visual representation) with an X and Y for where I want this bar to draw
     bar0.setSensorValues(mazeData.getSensor0Value(), mazeData.getLowThreathold0());
     bar0.setLabel("Sensor 1");
     bar0.draw();
 
-    SensorBar bar1 = new SensorBar(130,10);
+    SensorBar bar1 = new SensorBar(130,20);
     bar1.setSensorValues(mazeData.getSensor1Value(), mazeData.getLowThreathold1());
     bar1.setLabel("Sensor 2");
     bar1.draw();
 
-    SensorBar bar2 = new SensorBar(230,10);
+    SensorBar bar2 = new SensorBar(230,20);
     bar2.setSensorValues(mazeData.getSensor2Value(), mazeData.getLowThreathold2());
     bar2.setLabel("Sensor 3");
     bar2.draw();
 
-    SensorBar bar3 = new SensorBar(330,10);
+    SensorBar bar3 = new SensorBar(330,20);
     bar3.setSensorValues(mazeData.getSensor3Value(), mazeData.getLowThreathold3());
     bar3.setLabel("Sensor 4");
     bar3.draw();
 
-    SensorBar bar4 = new SensorBar(430,10);
+    SensorBar bar4 = new SensorBar(430,20);
     //bar4.setSensorValues(sensorData.getSensor3Value(), sensorData.getLowThreathold3());
     bar4.setLabel("No 5");
     bar4.draw();
@@ -234,8 +225,15 @@ void draw () {
       soundAlarm();
       delay(1000); //1 seconds
       
-    }   
-    
+    }
+
+    //Check if the treasure has been grabbed
+    if (mazeData.isTreasureStolen())
+    {
+      mazeData.setGameState( MazeData.STATE_COMPLETE );
+    }
+
+
     //Draw elapsed Time
     int timeX = 730;
     int timeY = 300;    
@@ -298,7 +296,7 @@ void draw () {
     
     
   textAlign(LEFT, TOP);
-  text("State:  " + mazeData.getGameStateLabel() + " (" + mazeData.getGameState() + ")", 13, 470);
+  text("State:  " + mazeData.getGameStateLabel() + " (" + mazeData.getGameState() + ")", 13, 460);
 
   }
 
@@ -346,7 +344,7 @@ class Alarm extends GuiComponent {
   
   void draw()
   {
-    fill(#1f1f1f);
+    fill(#ffffff);
     textSize(20);
     textAlign(CENTER, CENTER);
     text("Alarm", this.getX() + this.getWidth() / 2, this.getY() - 20);
@@ -363,9 +361,9 @@ class Alarm extends GuiComponent {
     
     //Draw Alarm graphic indicator
     fill(fillColor);  // RED
-    stroke(#303030);  // dark grey
+    noStroke();
     rect(this.getX(), this.getY(), this.getWidth(), this.getHeight());
-    fill(#303030);  // grey
+    fill(#FFFFFF);  // grey
     textSize(20);
     
     textAlign(CENTER, CENTER);
@@ -479,7 +477,6 @@ class MazeData {
   final static public  int STATE_COMPLETE = 6; //Player has won he game
   final static public  int STATE_LOST = 7; //Player has won he game
   
-  
   private boolean gamePaused;
   
   private int gameState;  
@@ -494,6 +491,8 @@ class MazeData {
   private int lowThreshold1;
   private int lowThreshold2;
   private int lowThreshold3;
+  
+  private boolean treasureSwitchValue;
   
   //Timing data
   private int startTime;
@@ -518,6 +517,15 @@ class MazeData {
     {
       if (this.gameState == STATE_RUNNING)
         ellapsedTime = millis() - startTime;
+    
+      try
+      {
+        mazeData.setSensorData(getSensorData(demoMode));
+      }
+      catch (Exception e)
+      {
+        println(e);
+      }
     }
     
     public int getEllapsedTime()
@@ -602,6 +610,24 @@ class MazeData {
       return this.lowThreshold3;
     }
     
+    private String getSensorData(boolean mockData)
+    {
+      if (mockData)
+      {
+        //Valid values are between 0-100 (will vary depending ont the resistors used on the sensor. Curently using 220ohm
+         //Light Sensors 0-3
+        int Mock0 = int(random(70,  89));
+        int Mock1 = int(random(20,  89));
+        int Mock2 = int(random(20, 87));
+        int Mock3 = int(random(20, 90));
+        
+        // Grab a random result to mock various data from the serial
+        lastSerialData = Mock0 + "," + Mock1 + "," + Mock2 + "," + Mock3;
+      }
+      
+      return lastSerialData;
+    }
+    
     private int getBrokenBeam()
     {
         if (this.sensor0Value < this.lowThreshold0)
@@ -626,6 +652,11 @@ class MazeData {
         }
         else
           return -1;        
+    }
+    
+    public boolean isTreasureStolen()
+    {
+      return treasureSwitchValue;
     }
     
     boolean isBeamBroken()
@@ -694,23 +725,6 @@ class MazeData {
         startTime = millis();
       }
     }
-}
-
-String getSensorData(boolean mockData) {
-  if (mockData)
-  {
-    //Valid values are between 0-100 (will vary depending ont the resistors used on the sensor. Curently using 220ohm
-     //Light Sensors 0-3
-    int Mock0 = int(random(70,  89));
-    int Mock1 = int(random(20,  89));
-    int Mock2 = int(random(20, 87));
-    int Mock3 = int(random(20, 90));
-    
-    // Grab a random result to mock various data from the serial
-    lastSerialData = Mock0 + "," + Mock1 + "," + Mock2 + "," + Mock3;
-  }
-  
-  return lastSerialData;
 }
 
 class Slider extends GuiComponent {

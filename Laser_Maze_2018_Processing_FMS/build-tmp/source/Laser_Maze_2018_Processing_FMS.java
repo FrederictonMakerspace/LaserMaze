@@ -1,3 +1,23 @@
+import processing.core.*; 
+import processing.data.*; 
+import processing.event.*; 
+import processing.opengl.*; 
+
+import processing.serial.*; 
+import processing.sound.*; 
+import controlP5.*; 
+
+import java.util.HashMap; 
+import java.util.ArrayList; 
+import java.io.File; 
+import java.io.BufferedReader; 
+import java.io.PrintWriter; 
+import java.io.InputStream; 
+import java.io.OutputStream; 
+import java.io.IOException; 
+
+public class Laser_Maze_2018_Processing_FMS extends PApplet {
+
 /*
 Laser Maze - 2018
 Author Rick McCaskill, Fredericton Makerspace
@@ -33,14 +53,14 @@ https://freesound.org/people/halomaniac/sounds/57364/
 https://freesound.org/people/Timbre/sounds/138002/
 --------
 */
-import processing.serial.*; // serial communication library
-import processing.sound.*;
-import controlP5.*;
+ // serial communication library
 
-boolean demoMode = true; //True to generate dummy data instead of reading from serial
-int defaultLowerSensorBound = 30;
+
 
 ControlP5 cp5;
+
+boolean demoMode = true; //True to generate dummy data instead of reading from serial
+
 MazeData mazeData = new MazeData(); // This object holds the state of the game 
 
 //Sounds Effects
@@ -52,6 +72,7 @@ SoundFile powerDownSound;
 SoundFile themeSongSound;
 
 Serial myPort; // The serial port
+boolean alarm = false;  // is the alarm servo on or off
 
 String lastSerialData = "";  // What's been read off of serial OR randomly generated if demoMode = true
 
@@ -64,14 +85,13 @@ Button resetButton;
 Button attractButton;
 Toggle themeMusicButton;
 
-// Sliders to controll the min threshold of the photosensors
-Slider slider0, slider1, slider2, slider3, slider4;
+Slider slider1;
 
 PImage logo;
 
-void setup () {
+public void setup () {
   // set the window size:
-  size(1000, 500);
+  
 
   frameRate(5);  // Run 5 frames per second
 
@@ -83,47 +103,20 @@ void setup () {
   themeMusicButton = cp5.addToggle("Theme Music")
     .setPosition(740,465)
     .setValue(true)
-    .setColorLabel(#FFFFFF);
-
-slider0 = cp5.addSlider("v0")
-       .setPosition(15, 20)
-       .setSize(10, 400)
-       .setRange(0, 100)
-       .setValue(defaultLowerSensorBound)
-       .setColorCaptionLabel(color(20,20,20));
+    .setColorLabel(0xffFFFFFF);
 
 slider1 = cp5.addSlider("v1")
-       .setPosition(115, 20)
+       .setPosition(15, 20)
        .setSize(10, 400)
-       .setRange(0, 100)
-       .setValue(defaultLowerSensorBound)
-       .setColorCaptionLabel(color(20,20,20));
-
-slider2 = cp5.addSlider("v2")
-       .setPosition(215, 20)
-       .setSize(10, 400)
-       .setRange(0, 100)
-       .setValue(defaultLowerSensorBound)
-       .setColorCaptionLabel(color(20,20,20));
-
-slider3 = cp5.addSlider("v3")
-       .setPosition(315, 20)
-       .setSize(10, 400)
-       .setRange(0, 100)
-       .setValue(defaultLowerSensorBound)
-       .setColorCaptionLabel(color(20,20,20));
-
-slider4 = cp5.addSlider("v4")
-       .setPosition(415, 20)
-       .setSize(10, 400)
-       .setRange(0, 100)
-       .setValue(defaultLowerSensorBound)
+       .setRange(0, 200)
+       .setValue(40)
        .setColorCaptionLabel(color(20,20,20));
 
   //String[] fontList = PFont.list();
   //printArray(fontList);
   gameFont20 = createFont("Helvitica",20);
   gameFont50 = createFont("Helvitica",50);
+
   
   // List all the available serial ports
   println(Serial.list());
@@ -145,18 +138,15 @@ slider4 = cp5.addSlider("v4")
   powerDownSound = new SoundFile(this, sketchPath("Power_Down.mp3"));
   themeSongSound = new SoundFile(this, sketchPath("Mission Impossible Theme.mp3"));
   
-  startButton = new Button(700, 410, "Start", #003B70);
-  stopButton = new Button(700, 410, "Stop", #0071E4);
+  startButton = new Button(700, 410, "Start", 0xff003B70);
+  stopButton = new Button(700, 410, "Stop", 0xff0071E4);
 
-  attractButton = new Button(850, 470, "Attract", #0d0d0d);
+  attractButton = new Button(850, 470, "Attract", 0xff0d0d0d);
   attractButton.setHeight(25);
 }
 
-void draw () {
+public void draw () {
   mazeData.update(); //Update game state for ellapsed time, etc.
-
-  //Set the min alarm thresholds. This allows you to tweak min values during runtime via the sliders.
-  mazeData.setMinimumThresholds(int(slider0.getValue()), int(slider1.getValue()), int(slider2.getValue()), int(slider3.getValue()), int(slider4.getValue()) );
 
   // Check if we should play the theme song, or mute it
   if (themeMusicButton.getBooleanValue() == true)
@@ -173,25 +163,25 @@ void draw () {
   //**********
   //Set inital background layout:
   // Blue left
-  background(#1D364A); // 152935
+  background(0xff1D364A); // 152935
 
   //meters background
-  fill(#162836);
+  fill(0xff162836);
   noStroke();
   rect(10, 10, 500, height - 20);
   
   logo.resize(250,0);
   image(logo, 700, 30);
   //***
-  fill(#ffffff);
+  fill(0xffffffff);
   textFont(gameFont50);
   text("Laser Maze", 824, 100);
   textFont(gameFont20);
   //**********
 
     textAlign(LEFT, TOP);
-    stroke(#FFFFFF);
-    fill(#FFFFFF);
+    stroke(0xffFFFFFF);
+    fill(0xffFFFFFF);
     
     if (mazeData.getGameState() == MazeData.STATE_RUNNING)
     {
@@ -206,34 +196,34 @@ void draw () {
     stopButton.draw();
     startButton.draw();
 
-    resetButton = new Button(850, 410, "Reset", #0071E4);
+    resetButton = new Button(850, 410, "Reset", 0xff0071E4);
     resetButton.draw();
     
     attractButton.draw();
     
     //Create a bar graph, set the data and draw it (x4)
     SensorBar bar0 = new SensorBar(30,20); //instantiate a bar (visual representation) with an X and Y for where I want this bar to draw
-    bar0.setSensorValues(mazeData.getSensor0Value(), mazeData.getLowThreshold0());
+    bar0.setSensorValues(mazeData.getSensor0Value(), mazeData.getLowThreathold0());
     bar0.setLabel("Sensor 1");
     bar0.draw();
 
     SensorBar bar1 = new SensorBar(130,20);
-    bar1.setSensorValues(mazeData.getSensor1Value(), mazeData.getLowThreshold1());
+    bar1.setSensorValues(mazeData.getSensor1Value(), mazeData.getLowThreathold1());
     bar1.setLabel("Sensor 2");
     bar1.draw();
 
     SensorBar bar2 = new SensorBar(230,20);
-    bar2.setSensorValues(mazeData.getSensor2Value(), mazeData.getLowThreshold2());
+    bar2.setSensorValues(mazeData.getSensor2Value(), mazeData.getLowThreathold2());
     bar2.setLabel("Sensor 3");
     bar2.draw();
 
     SensorBar bar3 = new SensorBar(330,20);
-    bar3.setSensorValues(mazeData.getSensor3Value(), mazeData.getLowThreshold3());
+    bar3.setSensorValues(mazeData.getSensor3Value(), mazeData.getLowThreathold3());
     bar3.setLabel("Sensor 4");
     bar3.draw();
 
     SensorBar bar4 = new SensorBar(430,20);
-    bar4.setSensorValues(mazeData.getSensor4Value(), mazeData.getLowThreshold4());
+    //bar4.setSensorValues(sensorData.getSensor3Value(), sensorData.getLowThreathold3());
     bar4.setLabel("No 5");
     bar4.draw();
 
@@ -271,12 +261,12 @@ void draw () {
     int timeY = 300;    
     int timeWidth = 200;
     int timeHeight = 80;
-    fill(#FFFFFF);  // white
-    stroke(#FFFFFF);  // white
+    fill(0xffFFFFFF);  // white
+    stroke(0xffFFFFFF);  // white
     rect(timeX, timeY, timeWidth, timeHeight);
 
-    fill(#303030);  // grey
-    String formattedTime = nf(float(mazeData.getEllapsedTime()) / float(1000),0,3);
+    fill(0xff303030);  // grey
+    String formattedTime = nf(PApplet.parseFloat(mazeData.getEllapsedTime()) / PApplet.parseFloat(1000),0,3);
     textSize(20);
     textAlign(CENTER, TOP);
     
@@ -303,7 +293,7 @@ void draw () {
     {
       sendStateToArduino('0'); // let the arduino know it's go time!
       countDownSound.play();
-      delay(int(countDownSound.duration()) * 1050);
+      delay(PApplet.parseInt(countDownSound.duration()) * 1050);
       
       themeSongSound.play();
       mazeData.setGameState(MazeData.STATE_RUNNING);
@@ -315,13 +305,13 @@ void draw () {
       
       gameWonSound.amp(1);
       gameWonSound.play();
-      delay(int(gameWonSound.duration()) * 1000);
+      delay(PApplet.parseInt(gameWonSound.duration()) * 1000);
 
       delay(1000);
 
-      powerDownSound.amp(0.1);
+      powerDownSound.amp(0.1f);
       powerDownSound.play();
-      delay(int(powerDownSound.duration()) * 1000);
+      delay(PApplet.parseInt(powerDownSound.duration()) * 1000);
       
       mazeData.setGameState(MazeData.STATE_ATTRACT);
     }
@@ -332,12 +322,12 @@ void draw () {
 
   }
 
-void soundAlarm()
+public void soundAlarm()
 {
   alarmSound.play();
 }
 
-void mousePressed() {
+public void mousePressed() {
   if (startButton.isVisible() && startButton.isMouseOver())
   {
      mazeData.setGameState( MazeData.STATE_GET_READY );
@@ -369,25 +359,25 @@ class Alarm extends GuiComponent {
     isAlarmOn = false;
   }
   
-  void setIsAlarmTripped(boolean alarmTripped)
+  public void setIsAlarmTripped(boolean alarmTripped)
   {
     isAlarmOn = alarmTripped;
   }
   
-  void draw()
+  public void draw()
   {
-    fill(#ffffff);
+    fill(0xffffffff);
     textSize(20);
     textAlign(CENTER, CENTER);
     text("Alarm", this.getX() + this.getWidth() / 2, this.getY() - 20);
 
     //Default 'off' colors.
-    color fillColor = #AACA74;
+    int fillColor = 0xffAACA74;
     String alarmText = "OFF";
     
     if (isAlarmOn)
     {
-      fillColor = #FF0000; //Change to RED
+      fillColor = 0xffFF0000; //Change to RED
       alarmText = "ON";
     }
     
@@ -395,7 +385,7 @@ class Alarm extends GuiComponent {
     fill(fillColor);  // RED
     noStroke();
     rect(this.getX(), this.getY(), this.getWidth(), this.getHeight());
-    fill(#FFFFFF);  // grey
+    fill(0xffFFFFFF);  // grey
     textSize(20);
     
     textAlign(CENTER, CENTER);
@@ -406,8 +396,8 @@ class Alarm extends GuiComponent {
 class SensorBar extends GuiComponent {
   private String sensorLabel; //Name to show at the bottom of the sensor bar
 
-  private color backgroundColor = #00505E;
-  private color thresholdColor = #FF0000;
+  private int backgroundColor = 0xff00505E;
+  private int thresholdColor = 0xffFF0000;
 
   private int sensorValue, lowerBound;
 
@@ -423,13 +413,13 @@ class SensorBar extends GuiComponent {
     
   }
 
-  void setSensorValues(int sensorValue, int lowerBound)
+  public void setSensorValues(int sensorValue, int lowerBound)
   {
     this.sensorValue = sensorValue;
     this.lowerBound = lowerBound;
   }
   
-  void setLabel(String label)
+  public void setLabel(String label)
   {
     this.sensorLabel = label;
   }
@@ -437,20 +427,20 @@ class SensorBar extends GuiComponent {
   /**
   Return a color based on how close value is to lowerBound. Lower values are closer to 'alarm' red. Range of value is between 0 - 1023
   **/
-  color getFillColor(int value, int lowerBound) {
-    color returnColor = #00FF00;
+  public int getFillColor(int value, int lowerBound) {
+    int returnColor = 0xff00FF00;
     
     if ( value < lowerBound )
-      returnColor = #8B270A; //#CE0000; //RED
+      returnColor = 0xff8B270A; //#CE0000; //RED
     else if ( value < (lowerBound + 20)) 
-      returnColor =  #EBA202; //#E8922A; //Orange
+      returnColor =  0xffEBA202; //#E8922A; //Orange
     else
-      returnColor = #00BBF6; //#AACA74; //Green 
+      returnColor = 0xff00BBF6; //#AACA74; //Green 
     
     return returnColor;
   }
 
-  void draw()
+  public void draw()
   {
     
     //Graph Border
@@ -478,7 +468,7 @@ class SensorBar extends GuiComponent {
 
     //Draw Label at the bottom
     textAlign(CENTER, TOP);
-    fill(#DDDDDD);
+    fill(0xffDDDDDD);
     textSize(20);
     text(this.sensorLabel, this.getX() + (this.getWidth() / 2), this.getY() + this.getHeight() + 10);
   }
@@ -518,24 +508,21 @@ class MazeData {
   private int sensor1Value;
   private int sensor2Value;
   private int sensor3Value;
-  private int sensor4Value;
   
   private int sensorAverageCount = 3;
   private IntList sensor0Values = new IntList();
   private IntList sensor1Values = new IntList();
   private IntList sensor2Values = new IntList();
   private IntList sensor3Values = new IntList();
-  private IntList sensor4Values = new IntList();
-  private int counter0, counter1, counter2, counter3, counter4 = 0;   
+  
   
   private int lowThreshold0;
   private int lowThreshold1;
   private int lowThreshold2;
   private int lowThreshold3;
-  private int lowThreshold4;
-
+  
   private boolean treasureSwitchValue;
-
+  
   //Timing data
   private int startTime;
   private int ellapsedTime;
@@ -546,24 +533,29 @@ class MazeData {
       this.sensor1Value = 0;
       this.sensor2Value = 0;
       this.sensor3Value = 0;
-      this.sensor4Value = 0;
 
-      this.lowThreshold0 = 0;
+      this.lowThreshold0 = 10;
       this.lowThreshold1 = 0;
       this.lowThreshold2 = 0;
       this.lowThreshold3 = 0;
-      this.lowThreshold4 = 0;
-
+      
       resetGame();
+      
+      //Initialize the rolling average
+      for (int i=0; i<sensor0Values.size(); i++)
+      {
+        sensor0Values.set(i,0);
+      }
     }
 
-    public void setMinimumThresholds(int lowThreshold0, int lowThreshold1, int lowThreshold2, int lowThreshold3, int lowThreshold4)
+    MazeData(int lowThreshold0, int lowThreshold1, int lowThreshold2, int lowThreshold3)
     {
+      super();
+
       this.lowThreshold0 = lowThreshold0;
       this.lowThreshold1 = lowThreshold1;
       this.lowThreshold2 = lowThreshold2;
       this.lowThreshold3 = lowThreshold3;
-      this.lowThreshold4 = lowThreshold4;
     }
     
     public void update()
@@ -605,6 +597,7 @@ class MazeData {
        this.gamePaused = paused;
     }
     
+    private int counter0, counter1, counter2, counter3 = 0; 
     public void setSensorData(String inputValues) throws Exception
     {
       if (inputValues == null)
@@ -621,41 +614,32 @@ class MazeData {
       
         //0 - Store 'sensorAverageCount' (3, for example) values in a circual fashion.  
         //   This is so we can average out the readings over a few intervals to protect against random 0 readings.
-        int value0 = int(trim(values[0]));
+        int value0 = PApplet.parseInt(trim(values[0]));
         sensor0Values.set(counter0, value0);
         counter0++;
         if (counter0 > this.sensorAverageCount) counter0 = 0; //loop back to the first.
         this.sensor0Value = value0;
         
         //1
-        int value1 = int(trim(values[1]));
+        int value1 = PApplet.parseInt(trim(values[1]));
         sensor1Values.set(counter1, value1);
         counter1++;
         if (counter1 > this.sensorAverageCount) counter1 = 0; //loop back to the first.
         this.sensor1Value = value1;
 
         //2
-        int value2 = int(trim(values[2]));
+        int value2 = PApplet.parseInt(trim(values[2]));
         sensor2Values.set(counter2, value2);
         counter2++;
         if (counter2 > this.sensorAverageCount) counter2 = 0; //loop back to the first.
         this.sensor2Value = value2;
 
         //3
-        int value3 = int(trim(values[3]));
+        int value3 = PApplet.parseInt(trim(values[3]));
         sensor3Values.set(counter3, value3);
         counter3++;
         if (counter3 > this.sensorAverageCount) counter3 = 0; //loop back to the first.
         this.sensor3Value = value3;
-
-        //4
-        if (values.length == 4) return;
-        //Could be skipped
-        int value4 = int(trim(values[4]));
-        sensor4Values.set(counter4, value4);
-        counter4++;
-        if (counter4 > this.sensorAverageCount) counter4 = 0; //loop back to the first.
-        this.sensor4Value = value4;
 /*      
         println("v0 " + values[0]);
         println("v1 " + values[1]);
@@ -677,26 +661,17 @@ class MazeData {
     {
       int sum = 0;
       
-      //print("size (" + values.size() + "): " );
+      print("size (" + values.size() + "): " );
       for (int i=0; i<values.size(); i++)
       {
-        //print("i=" + i + ": ");
-        //print(values.get(i) + ",");
+        print("i=" + i + ": ");
+        print(values.get(i) + ",");
         sum += values.get(i);
       }
 
-      if (values.size() > 0)
-      {
-        //println(" average: " + sum / values.size());
-        //println("");
-        return sum / values.size();
-      }
-      else
-      {
-        //println(" no values passed. average: 0");
-        //println("");
-        return 0;
-      }
+     println(" average: " + sum / values.size());
+     println("");
+      return sum / values.size();
     }
     
     public int getSensor0Value() {
@@ -723,50 +698,31 @@ class MazeData {
       
       //return this.sensor3Value;
     }
-
-    public int getSensor4Value() {
-      //Return the average Trying to avoid random '0s' from the photosensors
-      return average(this.sensor4Values);
-      
-      //return this.sensor3Value;
-    }
     
-    public void setLowThreathold0(int newThreshold) { this.lowThreshold0 = newThreshold; }
-    public int getLowThreshold0() {
+    public int getLowThreathold0() {
       return this.lowThreshold0;
     }
-
-    public void setLowThreathold1(int newThreshold) { this.lowThreshold1 = newThreshold; }
-    public int getLowThreshold1() {
+    public int getLowThreathold1() {
       return this.lowThreshold1;
     }
-
-    public void setLowThreathold2(int newThreshold) { this.lowThreshold2 = newThreshold; }
-    public int getLowThreshold2() {
+    public int getLowThreathold2() {
       return this.lowThreshold2;
     }
-
-    public void setLowThreathold3(int newThreshold) { this.lowThreshold3 = newThreshold; }
-    public int getLowThreshold3() {
+    public int getLowThreathold3() {
       return this.lowThreshold3;
     }
-
-    public void setLowThreathold4(int newThreshold) { this.lowThreshold4 = newThreshold; }
-    public int getLowThreshold4() {
-      return this.lowThreshold4;
-    }
-
+    
     private String getSensorData(boolean mockData)
     {
       if (mockData)
       {
         //Valid values are between 0-100 (will vary depending ont the resistors used on the sensor. Curently using 220ohm
          //Light Sensors 0-3
-        int Mock0 = int(random(70,  89));
-        int Mock1 = int(random(30,  100));
-        int Mock2 = int(random(200, 255));
-        int Mock3 = int(random(30, 90));
-
+        int Mock0 = PApplet.parseInt(random(70,  89));
+        int Mock1 = PApplet.parseInt(random(30,  100));
+        int Mock2 = PApplet.parseInt(random(200, 255));
+        int Mock3 = PApplet.parseInt(random(30, 90));
+        
         // Grab a random result to mock various data from the serial
         lastSerialData = Mock0 + "," + Mock1 + "," + Mock2 + "," + Mock3;
       }
@@ -808,7 +764,7 @@ class MazeData {
       return treasureSwitchValue;
     }
     
-    boolean isBeamBroken()
+    public boolean isBeamBroken()
     {
       int brokenBeam = getBrokenBeam();
       if ((brokenBeam > -1) || keyPressed)
@@ -825,7 +781,7 @@ class MazeData {
       return this.beamsBroken; 
     }
     
-    String toString()
+    public String toString()
     {
       return sensor0Value + "," + sensor1Value + "," + sensor2Value + "," + sensor3Value;
     }
@@ -876,15 +832,22 @@ class MazeData {
     }
 }
 
+class Slider extends GuiComponent {
+  
+  public void draw() {
+  
+  }
+}
+
 class Button extends GuiComponent {
   private boolean isButtonPressed;
   
   private String buttonText = "_undefined_";
-  private color buttonColor = #749ECA;
+  private int buttonColor = 0xff749ECA;
   
   private boolean isVisible = true;
   
-  Button(int x, int y, String text, color buttonColor)
+  Button(int x, int y, String text, int buttonColor)
   {
     super(x,y, 130,50);
     
@@ -913,20 +876,20 @@ class Button extends GuiComponent {
     return this.isVisible;
   }
   
-  void draw()
+  public void draw()
   {
     if (!this.isVisible())
       return;
       
     //Default 'off' colors.
-    color fillColor = this.buttonColor;
+    int fillColor = this.buttonColor;
     
     if (isMouseOver())
-      fillColor = #440000;
+      fillColor = 0xff440000;
     
     if (isButtonPressed)
     {
-      fillColor = #FF0000; //Change to RED
+      fillColor = 0xffFF0000; //Change to RED
     }
 
     //Draw Button
@@ -936,7 +899,7 @@ class Button extends GuiComponent {
     //stroke(#888888);  //Darker outline 
 
     rect(this.getX(), this.getY(), this.getWidth(), this.getHeight(), 2);
-    fill(#FFFFFF);  // Text Color
+    fill(0xffFFFFFF);  // Text Color
     textSize(20);
     
     textAlign(CENTER, CENTER);
@@ -948,7 +911,7 @@ class Button extends GuiComponent {
 /*
 Called when serial data is read. Then we store the results which are used in getSensorData()
 */
-void serialEvent (Serial myPort) {
+public void serialEvent (Serial myPort) {
   //Assume the data is in a comma string "n:12,45,76,80"
 
   lastSerialData = myPort.readStringUntil('\n');    // get the ASCII string
@@ -961,7 +924,7 @@ void serialEvent (Serial myPort) {
   println(lastSerialData);
 }
 
-void stop() {
+public void stop() {
   myPort.stop();  // stop serial com
   super.stop();  // allow normal clean up routing to run after stop()
 }
@@ -1015,8 +978,18 @@ class GuiComponent
     this.h = h;
   }
   
-  void draw()
+  public void draw()
   {
     //Override to draw your control on the screen
+  }
+}
+  public void settings() {  size(1000, 500); }
+  static public void main(String[] passedArgs) {
+    String[] appletArgs = new String[] { "Laser_Maze_2018_Processing_FMS" };
+    if (passedArgs != null) {
+      PApplet.main(concat(appletArgs, passedArgs));
+    } else {
+      PApplet.main(appletArgs);
+    }
   }
 }

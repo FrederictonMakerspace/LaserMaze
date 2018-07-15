@@ -15,17 +15,17 @@ Input:
   Expects serial data (4 comma separated values representing 4 sensors). Prepended with the 'state' of the arduino
   Data format: csv list of readings from a photoresistor. Example: 3:84,94,32,12
   Lower values mean less light.
-  If and indidual value falls below a low threshold value (See MazeData), the 'alarm' is triggered.
+  If an indidual value falls below a low threshold value (See MazeData), the 'alarm' is triggered.
 
 Output / Communcations (Messages sent to attached Arduino)
   "0" - Everything is fine. The game is running. No beams broken.
   "1" - Beam has been broken. We've sounded an alarm.
-  "2" - The game is to be reset back to a clean state. I.E. either booting UP or being reset AFTER the game has been won / lost and you want to play again.
+  "2" - The game is to be reset back to a clean state. I.E. either booting up after a loss and you want to play again.
         Envisioning something like lights blink, lasers flicker, etc. to show 'booting up' visually.
   "3" - Attract Mode
   
 Tuning:
-  MazeData contains the data for the maze. if you want to 'tune' the threashold value, edit lowThreshold0, lowThreshold1,lowThreshold2,lowThreshold3
+  MazeData contains the data for the maze. It's initialized and the low thresholds are read from the UI sliders each interval. Change defaultLowerSensorBound to edit default.
 --------
 
 Sounds used under Creative Commons by: 
@@ -37,10 +37,10 @@ import processing.serial.*; // serial communication library
 import processing.sound.*;
 import controlP5.*;
 
-boolean demoMode = true; //True to generate dummy data instead of reading from serial
-int defaultLowerSensorBound = 30;
+boolean demoMode = false; //True to generate dummy data instead of reading from serial
+int defaultLowerSensorBound = 30; //Value to set the 'low light' threshold to on startup
 
-ControlP5 cp5;
+ControlP5 cp5; //Used for UI wigets
 MazeData mazeData = new MazeData(); // This object holds the state of the game 
 
 //Sounds Effects
@@ -73,7 +73,7 @@ void setup () {
   // set the window size:
   size(1000, 500);
 
-  frameRate(5);  // Run 5 frames per second
+  frameRate(20);
 
   // load graphics
   logo = loadImage("Logo_type_white.png");
@@ -130,10 +130,18 @@ slider4 = cp5.addSlider("v4")
 
   if (!demoMode)
   {
-    myPort = new Serial(this, Serial.list()[2], 9600);
-    // don't generate a serialEvent() unless you get a newline character:
-    myPort.bufferUntil('\n');
-    
+    try
+    {
+      myPort = new Serial(this, Serial.list()[2], 9600);
+      // don't generate a serialEvent() unless you get a newline character:
+      myPort.bufferUntil('\n');
+    }
+    catch (Exception e)
+    {
+      println("No Arduino detected. Flipping to demo mode" + e.getMessage());
+      e.printStackTrace();
+      demoMode = true;
+    }
     sendStateToArduino('2'); // Send 'reset'
   }
   
@@ -143,7 +151,8 @@ slider4 = cp5.addSlider("v4")
   countDownSound = new SoundFile(this, sketchPath("Countdown.mp3"));
   gameWonSound = new SoundFile(this, sketchPath("57364__halomaniac__mission-complete-2-0.mp3"));
   powerDownSound = new SoundFile(this, sketchPath("Power_Down.mp3"));
-  themeSongSound = new SoundFile(this, sketchPath("Mission Impossible Theme.mp3"));
+  //themeSongSound = new SoundFile(this, sketchPath("Mission Impossible Theme.mp3"));
+  themeSongSound = new SoundFile(this, sketchPath("The a la Menthe.mp3"));
   
   startButton = new Button(700, 410, "Start", #003B70);
   stopButton = new Button(700, 410, "Stop", #0071E4);
@@ -262,7 +271,11 @@ void draw () {
     //Check if the treasure has been grabbed
     if (mazeData.isTreasureStolen())
     {
-      mazeData.setGameState( MazeData.STATE_COMPLETE );
+      // Only alert of the game is running
+      if (mazeData.getGameState() == MazeData.STATE_RUNNING)
+      {
+        mazeData.setGameState( MazeData.STATE_COMPLETE );
+      }
     }
 
 
@@ -292,7 +305,7 @@ void draw () {
     {
       themeSongSound.stop();
 
-      sendStateToArduino('2'); //Tell the arduino that the get needs to be 'reset'
+      sendStateToArduino('2'); //Tell the arduino to shut off lasers (TODO - change to shutdown state)
 
       powerUpSound.play();
       delay(100);
@@ -318,6 +331,8 @@ void draw () {
       delay(int(gameWonSound.duration()) * 1000);
 
       delay(1000);
+
+      sendStateToArduino('1'); //Tell the arduino to shut off lasers (TODO - change to shutdown state)
 
       powerDownSound.amp(0.1);
       powerDownSound.play();
@@ -571,6 +586,13 @@ class MazeData {
       if (this.gameState == STATE_RUNNING)
         ellapsedTime = millis() - startTime;
     
+    
+      //simulate the treasue stolen
+      if ( (keyPressed && key == 't') )
+      {
+        this.setGameState(MazeData.STATE_COMPLETE);
+        }
+      
       try
       {
         mazeData.setSensorData(getSensorData(demoMode));
@@ -613,6 +635,19 @@ class MazeData {
       }
       else
       {
+        int inputState = int( inputValues.substring(0, inputValues.indexOf(":")) );
+        inputValues = inputValues.substring(inputValues.indexOf(":")+1, inputValues.length());
+        //println("inputState: " + inputState);
+        //println("inputValues: " + inputValues);
+        
+        // 6 from the arduino means the treasure was stolen
+        if (inputState == 6)
+        {
+          treasureSwitchValue = true;
+        }
+        else
+          treasureSwitchValue = false;
+        
         String values[] = inputValues.split(",");
         if (values.length < 4)
         {
@@ -768,7 +803,7 @@ class MazeData {
         int Mock3 = int(random(30, 90));
 
         // Grab a random result to mock various data from the serial
-        lastSerialData = Mock0 + "," + Mock1 + "," + Mock2 + "," + Mock3;
+        lastSerialData = "0:" + Mock0 + "," + Mock1 + "," + Mock2 + "," + Mock3;
       }
       
       return lastSerialData;
@@ -811,7 +846,7 @@ class MazeData {
     boolean isBeamBroken()
     {
       int brokenBeam = getBrokenBeam();
-      if ((brokenBeam > -1) || keyPressed)
+      if ((brokenBeam > -1) || (keyPressed && (key == ENTER || key == RETURN)) )
       {
         beamsBroken++;
         return true;
@@ -956,8 +991,8 @@ void serialEvent (Serial myPort) {
   
   lastSerialData = lastSerialData.replace("\n","");
   
-  //strip off state (n:)
-  lastSerialData = lastSerialData.substring(2, lastSerialData.length());
+  //Dont strip off the first number - we need it now!
+  //lastSerialData = lastSerialData.substring(lastSerialData.indexOf(":"), lastSerialData.length());
   println(lastSerialData);
 }
 

@@ -12,7 +12,8 @@ Demo Mode
 
 --------
 Input:
-  Expects serial data (4 comma separated values representing 4 sensors). Prepended with the 'state' of the arduino
+  State:R1,R2,R2,R4
+  Expects serial data (4 comma separated values representing 4 sensors). Prepended with the 'state' of game on the arduino
   Data format: csv list of readings from a photoresistor. Example: 3:84,94,32,12
   Lower values mean less light.
   If an indidual value falls below a low threshold value (See MazeData), the 'alarm' is triggered.
@@ -133,6 +134,7 @@ slider4 = cp5.addSlider("v4")
     try
     {
       myPort = new Serial(this, Serial.list()[2], 9600);
+      myPort.clear();
       // don't generate a serialEvent() unless you get a newline character:
       myPort.bufferUntil('\n');
     }
@@ -142,6 +144,7 @@ slider4 = cp5.addSlider("v4")
       e.printStackTrace();
       demoMode = true;
     }
+    delay(1000);
     sendStateToArduino('2'); // Send 'reset'
   }
   
@@ -151,8 +154,8 @@ slider4 = cp5.addSlider("v4")
   countDownSound = new SoundFile(this, sketchPath("Countdown.mp3"));
   gameWonSound = new SoundFile(this, sketchPath("57364__halomaniac__mission-complete-2-0.mp3"));
   powerDownSound = new SoundFile(this, sketchPath("Power_Down.mp3"));
-  //themeSongSound = new SoundFile(this, sketchPath("Mission Impossible Theme.mp3"));
-  themeSongSound = new SoundFile(this, sketchPath("The a la Menthe.mp3"));
+  themeSongSound = new SoundFile(this, sketchPath("Mission Impossible Theme.mp3"));
+  //themeSongSound = new SoundFile(this, sketchPath("The a la Menthe.mp3"));
   
   startButton = new Button(700, 410, "Start", #003B70);
   stopButton = new Button(700, 410, "Stop", #0071E4);
@@ -278,6 +281,15 @@ void draw () {
       }
     }
 
+    //Check for start button pushed
+    if (mazeData.isStartButtonPushed())
+    {
+      if (mazeData.getGameState() != MazeData.STATE_GET_READY)
+      {
+        mazeData.setGameState( MazeData.STATE_GET_READY );
+      }
+      println("Start Button Pressed");
+    }
 
     //Draw elapsed Time
     int timeX = 730;
@@ -504,7 +516,9 @@ public void sendStateToArduino(char state)
   try
   {
     if (myPort != null)
+    {
       myPort.write(state);
+    }
   }
   catch (Exception e)
   {
@@ -550,6 +564,7 @@ class MazeData {
   private int lowThreshold4;
 
   private boolean treasureSwitchValue;
+  private boolean startButtonPushed;
 
   //Timing data
   private int startTime;
@@ -585,7 +600,6 @@ class MazeData {
     {
       if (this.gameState == STATE_RUNNING)
         ellapsedTime = millis() - startTime;
-    
     
       //simulate the treasue stolen
       if ( (keyPressed && key == 't') )
@@ -647,6 +661,16 @@ class MazeData {
         }
         else
           treasureSwitchValue = false;
+        
+        if (inputState == 5)
+        {
+          startButtonPushed = true;
+        }
+        else
+        {
+          startButtonPushed = false;
+        }
+        //println("startButtonPushed: " + startButtonPushed);
         
         String values[] = inputValues.split(",");
         if (values.length < 4)
@@ -843,6 +867,11 @@ class MazeData {
       return treasureSwitchValue;
     }
     
+    public boolean isStartButtonPushed()
+    {
+      return startButtonPushed;
+    }
+    
     boolean isBeamBroken()
     {
       int brokenBeam = getBrokenBeam();
@@ -993,12 +1022,13 @@ void serialEvent (Serial myPort) {
   
   //Dont strip off the first number - we need it now!
   //lastSerialData = lastSerialData.substring(lastSerialData.indexOf(":"), lastSerialData.length());
-  println(lastSerialData);
+  //println(lastSerialData);
 }
 
-void stop() {
+void exit() {
+  println("shutting down");
   myPort.stop();  // stop serial com
-  super.stop();  // allow normal clean up routing to run after stop()
+  super.exit();  // allow normal clean up routing to run after stop()
 }
 
 /*

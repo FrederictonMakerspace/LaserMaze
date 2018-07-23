@@ -10,6 +10,7 @@ const int laserPin1=9;       // Laser (5mw) connected to pin at Arduino pin 9
 const int laserPin2=10;      // Laser (5mw) connected to pin at Arduino pin 10
 const int laserPin3=11;      // Laser (5mw) connected to pin at Arduino pin 11
 const int pressureSwitch=7;  // Controls the 'treasure' detection. The treasure holds the switch closed. 
+const int startSwitch=6;  // Controls the the detecting of a 'start' momentary switch being pressed
 int SystemStatus=4;
 
 const int resistorPins[] = {A0, A1, A2, A3}; //Photoresistor at Arduino analog pin A0
@@ -29,6 +30,8 @@ void setup()
   pinMode(laserPin2, OUTPUT);  // Set laserPin - 10 pin as an output
   pinMode(laserPin3, OUTPUT);  // Set laserPin - 11 pin as an output
 
+  pinMode(startSwitch, INPUT_PULLUP);
+  
   //Initialize input pics
   for (int i=0; i<resistorCount; i++)
   {
@@ -59,6 +62,15 @@ void loop()
     resistorValues[i] = analogRead(resistorToRead);
   }
   
+  SystemStatus=0; // Game is running
+  
+  //Check if 'start' was pressed.
+  int startSwitchStatus=digitalRead(startSwitch);
+  if (startSwitchStatus == LOW)
+  {
+    SystemStatus=5; // start button pressed
+  }
+
   //Check if the treasure has been stolen
   int switchStatus=digitalRead(pressureSwitch);
   if (switchStatus == HIGH)
@@ -66,11 +78,7 @@ void loop()
     //Yep! Treasure stolen!
     SystemStatus=6;
   }
-  else
-  {
-    //Nope! Treasure is in place
-    SystemStatus=0;  
-  }
+
   String serialMessage = (String)SystemStatus + ":" + (String)resistorValues[0] + "," + (String)resistorValues[1] + "," + (String)resistorValues[2] + ","  + (String)resistorValues[3];
   Serial.println(serialMessage);
 
@@ -143,7 +151,6 @@ void laserOff() {
       digitalWrite(laserPin1, LOW); //Turn laser on
       digitalWrite(laserPin2, LOW); //Turn laser on
       digitalWrite(laserPin3, LOW); //Turn laser on
-      triggerAlarm();
 }
 
 /*

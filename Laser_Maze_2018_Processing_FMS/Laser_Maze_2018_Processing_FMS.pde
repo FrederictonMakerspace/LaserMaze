@@ -133,7 +133,7 @@ slider4 = cp5.addSlider("v4")
   {
     try
     {
-      myPort = new Serial(this, Serial.list()[2], 9600);
+      myPort = new Serial(this, Serial.list()[0], 9600);
       myPort.clear();
       // don't generate a serialEvent() unless you get a newline character:
       myPort.bufferUntil('\n');
@@ -344,7 +344,7 @@ void draw () {
 
       delay(1000);
 
-      sendStateToArduino('1'); //Tell the arduino to shut off lasers (TODO - change to shutdown state)
+      sendStateToArduino('4'); //Tell the arduino to shut off lasers (TODO - change to shutdown state)
 
       powerDownSound.amp(0.1);
       powerDownSound.play();

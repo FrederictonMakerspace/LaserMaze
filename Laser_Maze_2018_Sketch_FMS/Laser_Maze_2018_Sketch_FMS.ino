@@ -5,13 +5,17 @@
    Dev: James Gaudet, Fredericton Makerspace 2018
 */
 const int ledPin=13;       // Led pin at Arduino pin 13
-const int laserPin0=8;       // Laser (5mw) connected to pin at Arduino pin 8
+const int laserPin0=6;       // Laser (5mw) connected to pin at Arduino pin 8
 const int laserPin1=9;       // Laser (5mw) connected to pin at Arduino pin 9
 const int laserPin2=10;      // Laser (5mw) connected to pin at Arduino pin 10
 const int laserPin3=11;      // Laser (5mw) connected to pin at Arduino pin 11
 const int pressureSwitch=7;  // Controls the 'treasure' detection. The treasure holds the switch closed. 
-const int startSwitch=6;  // Controls the the detecting of a 'start' momentary switch being pressed
+const int startSwitch=4;  // Controls the the detecting of a 'start' momentary switch being pressed
 int SystemStatus=4;
+
+int brightness = 0;    // how bright the LED is
+int fadeAmount = 5; 
+
 
 const int resistorPins[] = {A0, A1, A2, A3}; //Photoresistor at Arduino analog pin A0
 int resistorCount = 4;
@@ -111,28 +115,36 @@ void loop()
             SystemStatus=3;
             attractMode();
           break;
+          case '4':
+            SystemStatus=1;
+            gameWon();
+          break;
        }
    }
 }
 
+void gameWon() {
+    laserOff();
+    delay (200);
+    laserFadeUp();
+    laserChase();
+    laserChase();
+    laserFadeDown();
+    laserOn();
+    //laserWin(); spread laser at top
+  
+  }
+
+  
 void systemReset() {
     //flash lasers randomly on and off
+    laserOff();
+    laserChase();
+    fadeAmount = 1.7;
+    laserFadeUp();
     laserOn();
-    delay(200);
-      digitalWrite(ledPin, LOW); //Turn led on
-      digitalWrite(laserPin0, LOW); //Turn laser on
-      digitalWrite(laserPin1, LOW); //Turn laser on
-      digitalWrite(laserPin2, LOW); //Turn laser on
-      digitalWrite(laserPin3, LOW); //Turn laser on
-      
-      digitalWrite(ledPin, HIGH); //Turn led on
-      digitalWrite(laserPin0, HIGH); //Turn laser on
-      delay(200);
-      digitalWrite(laserPin1, HIGH); //Turn laser on
-      delay(200);
-      digitalWrite(laserPin2, HIGH); //Turn laser on
-      delay(200);
-      digitalWrite(laserPin3, HIGH); //Turn laser on
+    
+
   // then let the PC know I'm reset
     String serialMessage = "1:"; //need to verify what to send to PC
 }
@@ -157,30 +169,79 @@ void laserOff() {
 Do something that looks cool while the gsme isn't being played
 */
 void attractMode() {
-    digitalWrite(laserPin0, LOW);
-    digitalWrite(laserPin1, LOW);
-    digitalWrite(laserPin2, LOW);
-    digitalWrite(laserPin3, LOW);
-    for (int x = 800; x > 0; x-=200 ) {
-  //    println(x);
-  digitalWrite(laserPin0, HIGH);
-  delay(x);
-  digitalWrite(laserPin0, LOW);
-  digitalWrite(laserPin1, HIGH);
-  delay(x);
-  digitalWrite(laserPin1, LOW);
-  digitalWrite(laserPin2, HIGH);
-  delay(x);
-  digitalWrite(laserPin2, LOW);
-  digitalWrite(laserPin3, HIGH);
-  delay(x);
-  digitalWrite(laserPin3, LOW);
-  digitalWrite(laserPin2, HIGH);
-  delay(x);
-  digitalWrite(laserPin2, LOW);
-  digitalWrite(laserPin1, HIGH);
-  delay(x);
-  digitalWrite(laserPin1, LOW);
+  fadeAmount = 4;
+  laserFadeDown();
+  laserFadeUp();
+  fadeAmount = 2;
+  laserFadeDown();
+  laserFadeUp();
+  laserChase();
+  laserChase();
   }
+ 
+
+void laserFadeDown() {
+  int brightness=255;
+  while (brightness>0) {
+
+      analogWrite(laserPin0, brightness); //Turn laser on
+      analogWrite(laserPin1, brightness); //Turn laser on
+      analogWrite(laserPin2, brightness); //Turn laser on
+      analogWrite(laserPin3, brightness); //Turn laser on
+brightness = brightness - fadeAmount;
+delay (30);
+}
 }
 
+void laserFadeUp() {
+  int brightness=0;
+  while (brightness<255) {
+
+      analogWrite(laserPin0, brightness); //Turn laser on
+      analogWrite(laserPin1, brightness); //Turn laser on
+      analogWrite(laserPin2, brightness); //Turn laser on
+      analogWrite(laserPin3, brightness); //Turn laser on
+brightness = brightness + fadeAmount;
+delay (30);
+}
+}
+
+
+void laserSparkle() {
+      digitalWrite(ledPin, HIGH); //Turn led on
+      digitalWrite(laserPin0, HIGH); //Turn laser on
+      digitalWrite(laserPin1, HIGH); //Turn laser on
+      digitalWrite(laserPin2, HIGH); //Turn laser on
+      digitalWrite(laserPin3, HIGH); //Turn laser on
+}
+
+
+void laserComet() {
+     
+      digitalWrite(laserPin0, HIGH); //Turn laser on
+      digitalWrite(laserPin1, HIGH); //Turn laser on
+      digitalWrite(laserPin2, HIGH); //Turn laser on
+      digitalWrite(laserPin3, HIGH); //Turn laser on
+}
+
+
+void laserChase() {
+     laserOff();
+      analogWrite(laserPin0, 255); //Turn laser on
+      delay (300);
+      analogWrite(laserPin0, 0); //Turn laser on
+      delay (300);
+      analogWrite(laserPin1, 255); //Turn laser on
+      delay (300);
+      analogWrite(laserPin1, 0); //Turn laser on
+      delay (300);
+      analogWrite(laserPin2, 255); //Turn laser on
+      delay (300);
+      analogWrite(laserPin2, 0); //Turn laser on
+      delay (300);
+      analogWrite(laserPin3, 255); //Turn laser on
+      delay (300);
+      analogWrite(laserPin3, 0); //Turn laser on
+      delay (300);
+      laserOn();
+}

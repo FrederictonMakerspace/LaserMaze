@@ -38,7 +38,7 @@ import processing.serial.*; // serial communication library
 import processing.sound.*;
 import controlP5.*;
 
-boolean demoMode = false; //True to generate dummy data instead of reading from serial
+boolean demoMode = true; //True to generate dummy data instead of reading from serial
 int defaultLowerSensorBound = 30; //Value to set the 'low light' threshold to on startup
 
 ControlP5 cp5; //Used for UI wigets
@@ -64,6 +64,7 @@ Button stopButton;
 Button resetButton;
 Button attractButton;
 Toggle themeMusicButton;
+Toggle calibrateButton;
 
 // Sliders to controll the min threshold of the photosensors
 Slider slider0, slider1, slider2, slider3, slider4;
@@ -82,8 +83,13 @@ void setup () {
   cp5 = new ControlP5(this);
 
   themeMusicButton = cp5.addToggle("Theme Music")
-    .setPosition(740,465)
+    .setPosition(750,465)
     .setValue(true)
+    .setColorLabel(#FFFFFF);
+
+  calibrateButton = cp5.addToggle("Calibrate")
+    .setPosition(700,465)
+    .setValue(false)
     .setColorLabel(#FFFFFF);
 
 slider0 = cp5.addSlider("v0")
@@ -166,6 +172,17 @@ slider4 = cp5.addSlider("v4")
 
 void draw () {
   mazeData.update(); //Update game state for ellapsed time, etc.
+
+  //Check if we're in calibration mode
+  if (calibrateButton.getBooleanValue())
+  {
+    println("calibrating");
+    slider0.setValue(mazeData.getSensor0Value() - 10);
+    slider1.setValue(mazeData.getSensor1Value() - 10);
+    slider2.setValue(mazeData.getSensor2Value() - 10);
+    slider3.setValue(mazeData.getSensor3Value() - 10);
+    slider4.setValue(mazeData.getSensor3Value() - 10);
+  }
 
   //Set the min alarm thresholds. This allows you to tweak min values during runtime via the sliders.
   mazeData.setMinimumThresholds(int(slider0.getValue()), int(slider1.getValue()), int(slider2.getValue()), int(slider3.getValue()), int(slider4.getValue()) );
@@ -1027,7 +1044,9 @@ void serialEvent (Serial myPort) {
 
 void exit() {
   println("shutting down");
-  myPort.stop();  // stop serial com
+
+  if (myPort != null)
+    myPort.stop();  // stop serial com
   super.exit();  // allow normal clean up routing to run after stop()
 }
 

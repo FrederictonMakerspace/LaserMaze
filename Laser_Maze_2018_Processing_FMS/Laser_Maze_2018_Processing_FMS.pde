@@ -181,7 +181,7 @@ void draw () {
     slider1.setValue(mazeData.getSensor1Value() - 10);
     slider2.setValue(mazeData.getSensor2Value() - 10);
     slider3.setValue(mazeData.getSensor3Value() - 10);
-    slider4.setValue(mazeData.getSensor3Value() - 10);
+    slider4.setValue(mazeData.getSensor4Value() - 10);
   }
 
   //Set the min alarm thresholds. This allows you to tweak min values during runtime via the sliders.

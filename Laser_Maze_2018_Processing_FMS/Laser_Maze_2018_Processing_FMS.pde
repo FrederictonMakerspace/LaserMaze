@@ -301,7 +301,8 @@ void draw () {
     //Check for start button pushed
     if (mazeData.isStartButtonPushed())
     {
-      if (mazeData.getGameState() != MazeData.STATE_GET_READY)
+      //Make sure you can't press start more than once
+      if ( (mazeData.getGameState() != MazeData.STATE_GET_READY) && (mazeData.getGameState() != MazeData.STATE_RUNNING) )
       {
         mazeData.setGameState( MazeData.STATE_GET_READY );
       }
@@ -384,7 +385,11 @@ void soundAlarm()
 void mousePressed() {
   if (startButton.isVisible() && startButton.isMouseOver())
   {
+    //Make sure you can't press start more than once
+    if ( (mazeData.getGameState() != MazeData.STATE_GET_READY) && (mazeData.getGameState() != MazeData.STATE_RUNNING) )
+    {
      mazeData.setGameState( MazeData.STATE_GET_READY );
+    }
   }
   
   if (stopButton.isVisible() && stopButton.isMouseOver())

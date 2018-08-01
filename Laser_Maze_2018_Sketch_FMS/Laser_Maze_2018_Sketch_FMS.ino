@@ -1,3 +1,7 @@
+#include <Ala.h>
+#include <AlaLedRgb.h>
+#include <AlaLed.h>
+
 #include <SoftwareSerial.h>
 /* Read Photo resisor values and send them to a PC (procssing) to monitor lasers in a laser maze)
    More info and circuit schematic: https://github.com/FrederictonMakerspace/LaserMaze
@@ -5,17 +9,20 @@
    Dev: James Gaudet, Fredericton Makerspace 2018
 */
 const int ledPin=13;       // Led pin at Arduino pin 13
-const int laserPin0=6;       // Laser (5mw) connected to pin at Arduino pin 8
+
+AlaLed leds;
+byte pins[] = { 6, 9, 10, 11 };
+const int laserPin0=6;       // Laser (5mw) connected to pin at Arduino pin 6
 const int laserPin1=9;       // Laser (5mw) connected to pin at Arduino pin 9
 const int laserPin2=10;      // Laser (5mw) connected to pin at Arduino pin 10
 const int laserPin3=11;      // Laser (5mw) connected to pin at Arduino pin 11
+
 const int pressureSwitch=7;  // Controls the 'treasure' detection. The treasure holds the switch closed. 
 const int startSwitch=4;  // Controls the the detecting of a 'start' momentary switch being pressed
 int SystemStatus=4;
 
 int brightness = 0;    // how bright the LED is
 int fadeAmount = 5; 
-
 
 const int resistorPins[] = {A0, A1, A2, A3}; //Photoresistor at Arduino analog pin A0
 int resistorCount = 4;
@@ -29,7 +36,7 @@ void setup()
   pinMode(pressureSwitch, INPUT);
   digitalWrite(pressureSwitch, HIGH);
   pinMode(ledPin, OUTPUT);  // Set ledPin - 13 pin as an output
-  pinMode(laserPin0, OUTPUT);  // Set laserPin - 8 pin as an output
+  pinMode(laserPin0, OUTPUT);  // Set laserPin - 6 pin as an output
   pinMode(laserPin1, OUTPUT);  // Set laserPin - 9 pin as an output
   pinMode(laserPin2, OUTPUT);  // Set laserPin - 10 pin as an output
   pinMode(laserPin3, OUTPUT);  // Set laserPin - 11 pin as an output
@@ -46,10 +53,6 @@ void setup()
   randomSeed (analogRead (4));    // randomize
     
   digitalWrite(ledPin, LOW); //Turn led off
-  digitalWrite(laserPin0, LOW); //Turn led off
-  digitalWrite(laserPin1, LOW); //Turn led off
-  digitalWrite(laserPin2, LOW); //Turn led off
-  digitalWrite(laserPin3, LOW); //Turn led off
   
   Serial.begin(9600);
   laserOn();
@@ -84,7 +87,7 @@ void loop()
   }
 
   String serialMessage = (String)SystemStatus + ":" + (String)resistorValues[0] + "," + (String)resistorValues[1] + "," + (String)resistorValues[2] + ","  + (String)resistorValues[3];
-  Serial.println(serialMessage);
+//Serial.println(serialMessage);
 
   //Send the values over to the attached PC
   //Check if the PC sent an alarm value
@@ -92,7 +95,7 @@ void loop()
    { 
       // If data is available to read,
       int  val = Serial.read(); // read it and store it in val from the processing app on the attached PC
-     
+
        switch (val)
        {
           case '0': //game running
@@ -111,11 +114,12 @@ void loop()
             systemReset();
           break;
 
-          case '3':
+          case '3': // case 3 Attract
             SystemStatus=3;
             attractMode();
           break;
-          case '4':
+          
+          case '4': // case 4 GameWon!
             SystemStatus=1;
             gameWon();
           break;
@@ -123,125 +127,125 @@ void loop()
    }
 }
 
-void gameWon() {
-    laserOff();
-    delay (200);
-    laserFadeUp();
-    laserChase();
-    laserChase();
-    laserFadeDown();
-    laserOn();
-    //laserWin(); spread laser at top
-  
-  }
 
+//---------------------------------------------
+//          ANIMATION SEQUENCES
+//---------------------------------------------
+// 2: Power Up = 5 sec
+AlaSeq seq_powerup[] =
+{
+  { ALA_SPARKLE2, 500, 1000 },
+  { ALA_COMET, 500, 1000 },
+  { ALA_COMET, 250, 1000 },
+  { ALA_FADEIN, 3000, 3000 },
+  { ALA_STOP, 1000, 1000},
+  { ALA_ENDSEQ }
   
-void systemReset() {
-    //flash lasers randomly on and off
-    laserOff();
-    laserChase();
-    fadeAmount = 1.7;
-    laserFadeUp();
-    laserOn();
-    
+};
 
-  // then let the PC know I'm reset
-    String serialMessage = "1:"; //need to verify what to send to PC
+AlaSeq seq_powerdown[] =
+{
+  { ALA_BLINK, 100, 1000 },
+  { ALA_BLINK, 250, 1500 },
+  { ALA_BLINK, 500, 2000 },
+  { ALA_FADEOUT, 2000, 2000 },
+  { ALA_OFF, 1000, 1000 },
+  { ALA_STOP, 1000, 1000},
+  { ALA_ENDSEQ }
+  
+};
+
+// 3: Attract = no set time.
+AlaSeq seq_attract[] =
+{
+  { ALA_SPARKLE2, 400, 4000 },
+  { ALA_LARSONSCANNER, 2000, 2000 },
+  { ALA_LARSONSCANNER, 1000, 2000 },
+  { ALA_LARSONSCANNER, 500, 1000 },
+  { ALA_LARSONSCANNER, 250, 1000 },
+  { ALA_FADEIN, 2000, 2000 },
+  { ALA_GLOW, 3000, 3000 },
+  { ALA_FADEIN, 2000, 2000 },
+  { ALA_STOP, 1000, 1000},
+  { ALA_ENDSEQ }
+};
+
+AlaSeq seq_on[] =
+{
+  { ALA_ON, 1000, 1000 },
+  { ALA_STOP, 1000, 1000},
+  { ALA_ENDSEQ }
+};
+
+AlaSeq seq_off[] =
+{
+  { ALA_OFF, 1000, 1000 },
+  { ALA_STOP, 1000, 1000},
+  { ALA_ENDSEQ }
+};
+
+AlaSeq seq_test[] =
+{
+  { ALA_LARSONSCANNER, 1000, 5000 },
+  { ALA_STOP, 1000, 1000},
+  { ALA_ENDSEQ }
+};
+
+AlaSeq seq_gamewon[] =
+{
+  { ALA_OFF, 1000, 1000 },
+  { ALA_FADEIN, 2000, 2000 },
+  { ALA_COMET, 1000, 2000 },
+  { ALA_COMET, 2000, 2000 },
+  { ALA_FADEOUT, 3000, 3000 },
+  { ALA_STOP, 1000, 1000},
+  { ALA_ENDSEQ }
+};
+//-------------------------------
+
+void playRandom()
+{
+  playBlockingAnimation(seq_test);
 }
 
 void laserOn() {
-      digitalWrite(ledPin, HIGH); //Turn led on
-      digitalWrite(laserPin0, HIGH); //Turn laser on
-      digitalWrite(laserPin1, HIGH); //Turn laser on
-      digitalWrite(laserPin2, HIGH); //Turn laser on
-      digitalWrite(laserPin3, HIGH); //Turn laser on
+  playBlockingAnimation(seq_on);
 }
 
 void laserOff() {
-      digitalWrite(ledPin, LOW); //Turn led on
-      digitalWrite(laserPin0, LOW); //Turn laser on
-      digitalWrite(laserPin1, LOW); //Turn laser on
-      digitalWrite(laserPin2, LOW); //Turn laser on
-      digitalWrite(laserPin3, LOW); //Turn laser on
+    playBlockingAnimation(seq_off);
 }
 
-/*
-Do something that looks cool while the gsme isn't being played
-*/
+// Mode 2 (5 seconds for sound) - System is 'booting up' or resetting
+void systemReset() {
+  //flash lasers randomly on and off
+  playBlockingAnimation(seq_powerup);
+
+  // then let the PC know I'm reset
+  String serialMessage = "1:"; //need to verify what to send to PC
+}
+
+// Mode 3 - Do something that looks cool while the game isn't being played
 void attractMode() {
-  fadeAmount = 4;
-  laserFadeDown();
-  laserFadeUp();
-  fadeAmount = 2;
-  laserFadeDown();
-  laserFadeUp();
-  laserChase();
-  laserChase();
+  playBlockingAnimation(seq_attract);
+}
+
+// Mode 4 - Player has completed the game successfully
+void gameWon() {
+  playBlockingAnimation(seq_gamewon);
+}
+
+
+
+void playBlockingAnimation(AlaSeq seq_animation[])
+{
+  leds.reset();
+  leds.initPWM(4, pins);
+
+  leds.setAnimation(seq_animation);
+  while (1)
+  {
+    leds.runAnimation();
+    if (leds.getStoppedFlag()) break;
   }
- 
-
-void laserFadeDown() {
-  int brightness=255;
-  while (brightness>0) {
-
-      analogWrite(laserPin0, brightness); //Turn laser on
-      analogWrite(laserPin1, brightness); //Turn laser on
-      analogWrite(laserPin2, brightness); //Turn laser on
-      analogWrite(laserPin3, brightness); //Turn laser on
-brightness = brightness - fadeAmount;
-delay (30);
-}
-}
-
-void laserFadeUp() {
-  int brightness=0;
-  while (brightness<255) {
-
-      analogWrite(laserPin0, brightness); //Turn laser on
-      analogWrite(laserPin1, brightness); //Turn laser on
-      analogWrite(laserPin2, brightness); //Turn laser on
-      analogWrite(laserPin3, brightness); //Turn laser on
-brightness = brightness + fadeAmount;
-delay (30);
-}
-}
-
-
-void laserSparkle() {
-      digitalWrite(ledPin, HIGH); //Turn led on
-      digitalWrite(laserPin0, HIGH); //Turn laser on
-      digitalWrite(laserPin1, HIGH); //Turn laser on
-      digitalWrite(laserPin2, HIGH); //Turn laser on
-      digitalWrite(laserPin3, HIGH); //Turn laser on
-}
-
-
-void laserComet() {
-     
-      digitalWrite(laserPin0, HIGH); //Turn laser on
-      digitalWrite(laserPin1, HIGH); //Turn laser on
-      digitalWrite(laserPin2, HIGH); //Turn laser on
-      digitalWrite(laserPin3, HIGH); //Turn laser on
-}
-
-
-void laserChase() {
-     laserOff();
-      analogWrite(laserPin0, 255); //Turn laser on
-      delay (300);
-      analogWrite(laserPin0, 0); //Turn laser on
-      delay (300);
-      analogWrite(laserPin1, 255); //Turn laser on
-      delay (300);
-      analogWrite(laserPin1, 0); //Turn laser on
-      delay (300);
-      analogWrite(laserPin2, 255); //Turn laser on
-      delay (300);
-      analogWrite(laserPin2, 0); //Turn laser on
-      delay (300);
-      analogWrite(laserPin3, 255); //Turn laser on
-      delay (300);
-      analogWrite(laserPin3, 0); //Turn laser on
-      delay (300);
-      laserOn();
 }
